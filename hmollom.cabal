@@ -11,6 +11,7 @@ homepage:            http://github.com/itkovian/hMollom
 category:            Net
 maintainer:          itkovian@gmail.com
 build-Type:          Simple
+extra-source-files:  src/Net/Mollom/Auth.hs
 
 
 library
