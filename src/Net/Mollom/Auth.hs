@@ -5,8 +5,8 @@ module Net.Mollom.Auth
   , getMollomNonce
   ) where
 
-import Codec.Binary.Base64(encode, decode)
-import Data.ByteString.Internal(c2w, w2c)
+import Codec.Binary.Base64(encode)
+import Data.ByteString.Internal(c2w)
 import Data.HMAC (hmac_sha1)
 import Data.List (intersperse)
 import Data.Time.Clock (getCurrentTime)
