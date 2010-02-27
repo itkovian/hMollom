@@ -96,9 +96,10 @@ service conn function (MollomRequest fields) = do
       requestStruct = [("public_key", publicKey), ("time", timeStamp), ("hash", hash), ("nonce", nonce)] ++ fields
   response <- remote (mollomFallbackServer ++ mollomApiVersion ++ "/") function requestStruct
   return response
-
+{-
 -- | make the actual XML-RPC call to the Mollom server returning
 --   the raw XML response, for debug purposes
+--   This requires that haxr exports the post function!
 service__ :: MollomConn    -- ^connection to the Mollom service
           -> String        -- ^remote function name
           -> MollomRequest -- ^request specific data
@@ -111,6 +112,7 @@ service__ conn function (MollomRequest fields) = do
       hash = authenticate publicKey privateKey timeStamp nonce
   response <- post (mollomFallbackServer ++ mollomApiVersion ++ "/") (renderCall $ MethodCall function [toValue ([("public_key", publicKey), ("time", timeStamp), ("hash", hash), ("nonce", nonce)] ++ fields)] )
   return response
+  -}
 
 
 -- | request a list of Mollom servers that can handle a site's calls.

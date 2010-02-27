@@ -1,6 +1,6 @@
 name:                hMollom
-version:             0.1
-cabal-version:       >= 1.2
+version:             0.1.1
+cabal-version:       >= 1.6
 stability:           experimental
 synopsis:            Library to interact with the Mollom anti-spam service
 description:         Library to interact with the Mollom anti-spam service
