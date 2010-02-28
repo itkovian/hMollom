@@ -19,8 +19,6 @@ module Network.Mollom
   , listBlacklistURL
   , MollomConn(..)
   , MollomValue(..)
-  , service
-  , service'
   ) where
 
 import Control.Monad.Error
@@ -101,10 +99,10 @@ retrieveNewServerList conn = rsl hardCodedMollomServerList
 -- FIXME: It expects the MollomConn record to contain a list of valid servers,
 -- obtained either through a cache or a call to getServerList with one of the
 -- hardCoded server.
-service :: MollomConn    -- ^connection to the Mollom service
+service :: XmlRpcType a => MollomConn    -- ^connection to the Mollom service
         -> String        -- ^remote function name
         -> MollomRequest -- ^request specific data 
-        -> IO (Either String Value)
+        -> IO (Either String a)
 service conn function (MollomRequest fields) = do
   let publicKey = mcPublicKey conn
       privateKey = mcPrivateKey conn
@@ -112,7 +110,10 @@ service conn function (MollomRequest fields) = do
       serverList = mcServerList conn
       apiVersion = mcAPIVersion conn
 
-  serviceLoop requestStruct apiVersion function serverList
+  r <- serviceLoop requestStruct apiVersion function serverList
+  case r of
+    Left s -> return $ Left s
+    Right v -> runErrorT $ fromValue v
   
   where serviceLoop :: [(String, String)] -> String -> String -> [String] -> IO (Either String Value)
         serviceLoop r a f [] = return $ Left "No more servers available"
@@ -160,32 +161,22 @@ service__ conn function (MollomRequest fields) = do
 -- | request a list of Mollom servers that can handle a site's calls.
 getServerList :: MollomConn -- ^connection to the Mollom service
               -> IO (Either String [String])-- ^list of servers that can be used
-getServerList conn  = do
-  r <- service conn "mollom.getServerList" (MollomRequest [])
-  case r of 
-    Left s -> return $ Left s
-    Right v -> (runErrorT $ fromValue v) :: IO (Either String [String])
+getServerList conn  = service conn "mollom.getServerList" (MollomRequest [])
+
 
 -- | asks Mollom whether the specified message is legitimate.
 checkContent :: MollomConn -- ^connection to the Mollom service
              -> [(String, String)] -- ^data
              -> IO (Either String [(String, MollomValue)]) -- ^contains spam decision and session ID
-checkContent conn ds = do
-  r <- service conn "mollom.checkContent" (MollomRequest ds) 
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+checkContent conn ds = service conn "mollom.checkContent" (MollomRequest ds) 
+
 
 -- | tells Mollom that the specifieed message was spam or otherwise abusive.
 sendFeedback :: MollomConn -- ^connection to the Mollom service
              -> String -- ^session ID
              -> String -- ^feedback: "spam", "profanity", "low-quality" or "unwanted"
              -> IO (Either String Bool) -- ^always returns True
-sendFeedback conn sessionID feedback = do             
-  r <- service conn  "mollom.sendFeedback" (MollomRequest [("session_id", sessionID), ("feedback", feedback)])
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+sendFeedback conn sessionID feedback = service conn  "mollom.sendFeedback" (MollomRequest [("session_id", sessionID), ("feedback", feedback)])
 
 
 -- | requests Mollom to generate a image CAPTCHA.
@@ -195,10 +186,7 @@ getImageCaptcha :: MollomConn -- ^connection to the Mollom service
                 -> IO (Either String [(String, MollomValue)]) -- ^session ID and CAPTCHA url
 getImageCaptcha conn sessionID authorIP = do
   let ds = map (\(n, v) -> (n, fromJust v)) $ filter (isJust . snd) [("session_id", sessionID), ("author_ip", authorIP)]
-  r <- service conn "mollom.getImageCaptcha" (MollomRequest ds)
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.getImageCaptcha" (MollomRequest ds)
 
 
 -- | requests Mollom to generate an audio CAPTCHA
@@ -208,10 +196,7 @@ getAudioCaptcha :: MollomConn -- ^connection to the Mollom service
                 -> IO (Either String [(String, MollomValue)]) -- ^session ID and CAPTCHA url
 getAudioCaptcha conn sessionID authorIP = do
   let ds = map (\(n, v) -> (n, fromJust v)) $ filter (isJust . snd) [("session_id", sessionID), ("author_ip", authorIP)]
-  r <- service conn "mollom.getAudioCaptcha" (MollomRequest ds)
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.getAudioCaptcha" (MollomRequest ds)
 
 
 -- | requests Mollom to verify the result of a CAPTCHA.
@@ -221,10 +206,7 @@ checkCaptcha :: MollomConn -- ^connection to the Mollom service
              -> IO (Either String Bool) -- ^True if correct, False if wrong
 checkCaptcha conn sessionID solution = do
   let ds = [("session_id", sessionID), ("solution", solution)]
-  r <- service conn "mollom.checkCaptcha" (MollomRequest ds)
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.checkCaptcha" (MollomRequest ds)
 
 
 -- | retrieves usage statistics from Mollom.
@@ -239,20 +221,14 @@ getStatistics :: MollomConn -- ^connection to the Mollom service
                         -- today_rejected — Number of spam posts rejected today.
               -> IO (Either String Int) -- ^Value of requested statistic
 getStatistics conn statType = do
-  r <- service conn "mollom.getStatistics" (MollomRequest [("type", statType)])
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.getStatistics" (MollomRequest [("type", statType)])
 
 
 -- | return a status value.
 verifyKey :: MollomConn -- ^connection to the Mollom service
           -> IO (Either String Bool) -- ^Always returns True
 verifyKey conn = do
-  r <- service conn "mollom.verifyKey" (MollomRequest [])
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.verifyKey" (MollomRequest [])
 
 
 -- | analyze text and return its most likely language code.
@@ -261,10 +237,7 @@ detectLanguage :: MollomConn -- ^connection to the Mollom service
               -- -> IO [[DetectLanguageResponseStruct]] -- ^list of (language, confidence) tuples
               -> IO (Either String [[(String, MollomValue)]]) -- ^list of (language, confidence) tuples
 detectLanguage conn text = do
-  r <- service conn "mollom.detectLanguage" (MollomRequest [("text", text)]) 
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.detectLanguage" (MollomRequest [("text", text)]) 
 
 
 -- | add text to your site's custom text blacklist.
@@ -275,10 +248,7 @@ addBlacklistText :: MollomConn -- ^connection to the Mollom service
                  -> IO (Either String Bool) -- ^always returns True
 addBlacklistText conn text match reason = do
   let ds = [("text", text), ("match", match), ("reason", reason)]
-  r <- service conn "mollom.addBlacklistText" (MollomRequest ds)
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.addBlacklistText" (MollomRequest ds)
 
 
 -- | remove text from your site's custom text blacklist.
@@ -287,10 +257,7 @@ removeBlacklistText :: MollomConn -- ^connection to the Mollom service
                  -> IO (Either String Bool) -- ^always returns True
 removeBlacklistText conn text = do
   let ds = [("text", text)]
-  r <- service conn "mollom.removeBlacklistText" (MollomRequest ds)
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.removeBlacklistText" (MollomRequest ds)
 
 
 -- | return the contents of your site's custom text blacklist.
@@ -298,10 +265,8 @@ listBlacklistText :: MollomConn -- ^connection to the Mollom service
                   -- -> IO [[(String, MollomValue)]] -- ^List of the current blacklisted URLs for the website corresponding to the public and private keypair
                   -> IO (Either String [[(String, MollomValue)]]) -- ^List of the current blacklisted URLs for the website corresponding to the public and private keypair
 listBlacklistText conn = do
-  r <- service conn "mollom.listBlacklistText" (MollomRequest []) 
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.listBlacklistText" (MollomRequest []) 
+
 
 -- | add a URL to your site's custom URL blacklist.
 addBlacklistURL :: MollomConn -- ^connection to the Mollom service
@@ -309,10 +274,7 @@ addBlacklistURL :: MollomConn -- ^connection to the Mollom service
                 -> IO (Either String Bool) -- ^always returns True
 addBlacklistURL conn url = do
   let ds = [("url", url)]
-  r <- service conn "mollom.addBlacklistURL" (MollomRequest ds)
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.addBlacklistURL" (MollomRequest ds)
 
 
 -- | remove a URL from your site's custom URL blacklist.
@@ -321,19 +283,13 @@ removeBlacklistURL :: MollomConn -- ^connection to the Mollom service
                    -> IO (Either String Bool) -- ^always returns True
 removeBlacklistURL conn url = do
   let ds = [("url", url)]
-  r <- service conn "mollom.removeBlacklistURL" (MollomRequest ds)
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.removeBlacklistURL" (MollomRequest ds)
 
 
 -- | return the contents of your site's custom URL blacklist.
 listBlacklistURL :: MollomConn -- ^connection to the Mollom service
                  -> IO (Either String [[(String, MollomValue)]]) -- ^List of the current blacklisted URLs for the website corresponding to the public and private keypair
 listBlacklistURL conn = do
-  r <- service conn "mollom.listBlacklistURL" (MollomRequest [])
-  case r of
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
+  service conn "mollom.listBlacklistURL" (MollomRequest [])
 
 
