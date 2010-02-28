@@ -3,6 +3,7 @@ module Network.Mollom.Auth
   ( authenticate
   , getMollomTime
   , getMollomNonce
+  , getAuthenticationInformation
   ) where
 
 import Codec.Binary.Base64(encode)
@@ -13,6 +14,8 @@ import Data.Time.Clock (getCurrentTime)
 import Data.Time.Format (formatTime)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Locale (defaultTimeLocale)
+
+import Network.Mollom.Internals
 
 authenticate :: String -- ^public key
              -> String -- ^private key
@@ -35,3 +38,10 @@ getMollomNonce :: String
 getMollomNonce = "FIXME_NONCE"
 
 
+getAuthenticationInformation :: String -> String -> [(String, String)]
+getAuthenticationInformation publicKey privateKey = 
+  let timeStamp = getMollomTime mollomTimeFormat
+      nonce = getMollomNonce
+      hash = authenticate publicKey privateKey timeStamp nonce
+  in [("public_key", publicKey), ("time", timeStamp), ("hash", hash), ("nonce", nonce)]
+ 
