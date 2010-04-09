@@ -3,8 +3,7 @@
 -- We wrap the configuration and the serverlist
 -- in a Reader and a State, respectively
 module Network.Mollom.MollomMonad 
-  ( MollomConfiguration(..)
-  , MollomMonad
+  ( MollomMonad
 --  , createMollomMonad
 --  , runMollomMonad
   , MollomState
@@ -23,14 +22,12 @@ import Network.Mollom.Internals
 type SessionID = String
 type Server = String
 
-data MollomConfiguration = MollomConfiguration 
-  { mcPublicKey :: String
-  , mcPrivateKey :: String
-  , mcAPIVersion :: String
-  } deriving (Eq, Ord, Show)
 
 
 type MollomState = ReaderT MollomConfiguration (StateT MollomServerList IO)
+type MollomMonad = ErrorT MollomError (StateT (Maybe SessionID) MollomState)
+
+
 
 {-
 newtype Eq a => MollomState a = MollomState {
@@ -45,9 +42,6 @@ newtype Eq a => MollomMonad a = MollomMonad {
 
 -}
 
-type MollomMonad = ErrorT String (StateT (Maybe SessionID) MollomState)
-
-  
 -- createMollomMonad :: MollomConfiguration -> MollomMonad ()
 -- createMollomMonad configuration = MollomMonad $ 
 

@@ -3,20 +3,20 @@
 -- |Interface to the Mollom API
 module Network.Mollom
   ( getServerList
-  --, checkContent
-  --, sendFeedback
-  --, getImageCaptcha
-  --, getAudioCaptcha
-  --, checkCaptcha
-  --, getStatistics
-  --, verifyKey
-  --, detectLanguage
-  --, addBlacklistText
-  --, removeBlacklistText
-  --, listBlacklistText
-  --, addBlacklistURL
-  --, removeBlacklistURL
-  --, listBlacklistURL
+  , checkContent
+  , sendFeedback
+  , getImageCaptcha
+  , getAudioCaptcha
+  , checkCaptcha
+  , getStatistics
+  , verifyKey
+  , detectLanguage
+  , addBlacklistText
+  , removeBlacklistText
+  , listBlacklistText
+  , addBlacklistURL
+  , removeBlacklistURL
+  , listBlacklistURL
   , MollomConfiguration(..)
   , MollomValue(..)
   ) where
@@ -46,11 +46,6 @@ hardCodedMollomServerList :: [String]
 hardCodedMollomServerList = ["http://xmlrpc1.mollom.com", "http://xmlrpc2.mollom.com", "http://xmlrpc3.mollom.com"]
 
 data MollomRequest = MollomRequest [(String, String)]
-
-data MollomError = MollomInternalError
-                 | MollomRefresh
-                 | MollomServerBusy deriving (Eq, Ord, Show)
-
 
 -- | Retrieve a new server list using the MollomMonad approach
 -- This is a computation that may fail. Upon failure, we return Nothing.
@@ -88,7 +83,7 @@ rsl rq a (server:ss) = do
 service :: XmlRpcType a
         => String        -- ^remote function name
         -> MollomRequest -- ^request specific data 
-        -> ErrorT String MollomState a
+        -> ErrorT MollomError MollomState a
 service function (MollomRequest fields) = do
   config <- ask
   let publicKey = mcPublicKey config
@@ -98,22 +93,22 @@ service function (MollomRequest fields) = do
   serviceLoop config requestStruct apiVersion function 
 
 
-serviceLoop :: XmlRpcType a => MollomConfiguration -> [(String, String)] -> String -> String -> ErrorT String MollomState a
+serviceLoop :: XmlRpcType a => MollomConfiguration -> [(String, String)] -> String -> String -> ErrorT MollomError MollomState a
 serviceLoop config r a f = serviceLoop' 
   where serviceLoop' = do serverList <- get
                           case serverList of
                             UninitialisedServerList -> refetchAndLoop
-                            MollomServerList [] -> fail "No more servers"
+                            MollomServerList [] -> throwError (HMollomError "No servers available")
                             MollomServerList (server:ss) -> do response <- liftIO $ service' r server a f
                                                                case response of 
                                                                   Left s -> case take 10 s of
                                                                               "Error 1100" -> refetchAndLoop 
-                                                                              "Error 1000" -> fail "Mollom Error"
+                                                                              "Error 1000" -> throwError MollomInternalError
                                                                               _            -> put (MollomServerList ss) >> serviceLoop'
                                                                   Right v -> return v
         refetchAndLoop = do nsl <- liftIO $ retrieveNewServerList config
                             case nsl of
-                              Nothing -> fail "No server available"
+                              Nothing -> throwError (HMollomError "No servers available")
                               Just sl -> put (MollomServerList sl) >> serviceLoop'
 
 -- | Make the actual call to the given Mollom server. 
@@ -133,7 +128,7 @@ getServerList :: MollomMonad [String]
 getServerList = do
   put Nothing -- no session ID here
   response <- ErrorT . returnStateT . runErrorT $ service "mollom.getServerList" (MollomRequest [])
-  lift . lift . put $ (MollomServerList response)
+  lift . lift . put $ MollomServerList response
   return response
   
 -- | asks Mollom whether the specified message is legitimate.
@@ -152,7 +147,7 @@ sendFeedback :: String -- ^feedback: "spam", "profanity", "low-quality" or "unwa
 sendFeedback feedback = do
   sessionID <- get 
   case sessionID of
-    Nothing -> fail "Mollom Error: no session ID provided"
+    Nothing -> throwError $ HMollomError "Mollom Error: no session ID provided"
     Just s -> do let mRequest = MollomRequest [("session_id", s), ("feedback", feedback)]
                  ErrorT . returnStateT . runErrorT $ service "mollom.sendFeedback" mRequest
 
@@ -187,9 +182,10 @@ getAudioCaptcha authorIP = do
 checkCaptcha :: String -- ^solution to the CAPTCHA
              -> MollomMonad Bool
 checkCaptcha solution = do
-  sessionID <- get
+  --sessionID <- get
+  let sessionID = Just "ll"
   case sessionID of
-    Nothing -> fail "Mollom Error: no session ID provided"
+    Nothing -> undefined -- throwError (HMollomError "Mollom Error: no session ID provided")
     Just s -> do let mRequest = MollomRequest [("session_id", s), ("solution", solution)]
                  ErrorT . returnStateT . runErrorT $ service "mollom.checkCaptcha" mRequest
 

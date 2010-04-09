@@ -2,43 +2,45 @@
 module Network.Mollom.Internals 
   ( mollomApiVersion
   , mollomTimeFormat
+  , MollomConfiguration(..)
   , MollomError(..)
   , MollomValue(..)
   , MollomServerList(..)
   ) where
 
+import Control.Monad.Error
 import Network.XmlRpc.Client
 import Network.XmlRpc.Internals 
 
 mollomApiVersion :: String
 mollomApiVersion = "1.0"
 
-
 -- FIXME: This should be specified in some configuration file
 -- or use the system locale
 mollomTimeFormat = "%Y-%m-%dT%H:%M:%S.000+0200"
 
--- |Describes connection with the Mollom server
-{-data MollomConn = MollomConn
+data MollomConfiguration = MollomConfiguration 
   { mcPublicKey :: String
   , mcPrivateKey :: String
-  , mcSessionID :: String
-  , mcServerList :: [String]
   , mcAPIVersion :: String
-  } deriving (Eq, Show)
--}
+  } deriving (Eq, Ord, Show)
 
 data MollomServerList = UninitialisedServerList | MollomServerList [String]
 
-data MollomError = MollomInternalError
+data MollomError = MollomInternalError 
                  | MollomRefresh
-                 | MollomServerBusy deriving (Eq, Ord, Show)
+                 | MollomServerBusy 
+                 | HMollomError String deriving (Eq, Ord, Show)
+
+instance Error MollomError where 
+  noMsg = HMollomError "Unknown Error"
+  strMsg str = HMollomError str
+
 
 data MollomValue = MInt Int
                  | MBool Bool
                  | MDouble Double
-                 | MString String
-                 | MFault MollomError deriving (Eq, Ord, Show)
+                 | MString String deriving (Eq, Ord, Show)
 
 instance XmlRpcType MollomValue where
   toValue (MInt i) = toValue i
