@@ -1,5 +1,5 @@
 name:                hMollom
-version:             0.1.1
+version:             0.2
 cabal-version:       >= 1.6
 stability:           experimental
 synopsis:            Library to interact with the Mollom anti-spam service
@@ -12,6 +12,8 @@ category:            Network
 maintainer:          itkovian@gmail.com
 build-Type:          Simple
 extra-source-files:  src/Network/Mollom/Auth.hs
+                     src/Network/Mollom/Internals.hs
+                     src/Network/Mollom/MollomMonad.hs
 
 
 library
