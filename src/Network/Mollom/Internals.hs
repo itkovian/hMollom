@@ -25,7 +25,7 @@ data MollomConfiguration = MollomConfiguration
   , mcAPIVersion :: String
   } deriving (Eq, Ord, Show)
 
-data MollomServerList = UninitialisedServerList | MollomServerList [String]
+data MollomServerList = UninitialisedServerList | MollomServerList [String] deriving (Eq, Ord, Show)
 
 data MollomError = MollomInternalError 
                  | MollomRefresh
