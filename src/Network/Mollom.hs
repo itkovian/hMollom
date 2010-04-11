@@ -98,7 +98,7 @@ serviceLoop config r a f = serviceLoop'
   where serviceLoop' = do serverList <- get
                           case serverList of
                             UninitialisedServerList -> refetchAndLoop
-                            MollomServerList [] -> throwError (HMollomError "No servers available")
+                            MollomServerList [] -> throwError MollomNoMoreServers
                             MollomServerList (server:ss) -> do response <- liftIO $ service' r server a f
                                                                case response of 
                                                                   Left s -> case take 10 s of
@@ -108,7 +108,7 @@ serviceLoop config r a f = serviceLoop'
                                                                   Right v -> return v
         refetchAndLoop = do nsl <- liftIO $ retrieveNewServerList config
                             case nsl of
-                              Nothing -> throwError (HMollomError "No servers available")
+                              Nothing -> throwError MollomNoMoreServers
                               Just sl -> put (MollomServerList sl) >> serviceLoop'
 
 -- | Make the actual call to the given Mollom server. 
@@ -185,7 +185,7 @@ checkCaptcha solution = do
   --sessionID <- get
   let sessionID = Just "ll"
   case sessionID of
-    Nothing -> undefined -- throwError (HMollomError "Mollom Error: no session ID provided")
+    Nothing -> throwError (HMollomError "Mollom Error: no session ID provided")
     Just s -> do let mRequest = MollomRequest [("session_id", s), ("solution", solution)]
                  ErrorT . returnStateT . runErrorT $ service "mollom.checkCaptcha" mRequest
 

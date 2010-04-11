@@ -30,6 +30,7 @@ data MollomServerList = UninitialisedServerList | MollomServerList [String]
 data MollomError = MollomInternalError 
                  | MollomRefresh
                  | MollomServerBusy 
+                 | MollomNoMoreServers
                  | HMollomError String deriving (Eq, Ord, Show)
 
 instance Error MollomError where 
