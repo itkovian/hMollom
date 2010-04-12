@@ -131,15 +131,42 @@ getServerList = do
   lift . lift . put $ MollomServerList response
   return response
   
+catSecondMaybes :: [(k, Maybe v)] -> [(k, v)]
+catSecondMaybes = map (second fromJust) . filter (isJust . snd)
+
+
 -- | asks Mollom whether the specified message is legitimate.
-checkContent :: [(String, String)] -- ^data
+checkContent :: Maybe String -- ^Current session ID
+              -> Maybe String -- ^Title of submitted post
+              -> Maybe String -- ^Body of submitted post
+              -> Maybe String -- ^Submitting user's name or nick
+              -> Maybe String -- ^Submitting user's URL
+              -> Maybe String -- ^Submitting user's email address
+              -> Maybe String -- ^Submitting user's openID
+              -> Maybe String -- ^Submitting user's current IP
+              -> Maybe String -- ^Submitting user's unique site ID
+              -> MollomMonad [(String, MollomValue)] -- ^The monad in which the function is executing
+checkContent sessionID title body authorName authorURL authorEmail authorOpenID authorIP authorSiteID =
+  let kvs = catSecondMaybes [("session_id", sessionID)
+                            ,("post_title", title)
+                            ,("post_body", body)
+                            ,("author_name", authorName)
+                            ,("author_url", authorURL)
+                            ,("author_mail", authorEmail)
+                            ,("author_openid", authorOpenID)
+                            ,("author_ip", authorIP)
+                            ,("author_id", authorSiteID)]
+  in checkContent' kvs
+  
+checkContent' :: [(String, String)] -- ^data
              -> MollomMonad [(String, MollomValue)] -- ^contains spam decision and session ID
-checkContent ds = do
+checkContent' ds = do
   response <- ErrorT . returnStateT . runErrorT $ service "mollom.checkContent" (MollomRequest ds)
   case lookup "session_id" response of
     Nothing -> put Nothing
     Just (MString sessionID) -> put $ Just sessionID 
   return response
+
 
 -- | tells Mollom that the specified message was spam or otherwise abusive.
 sendFeedback :: String -- ^feedback: "spam", "profanity", "low-quality" or "unwanted"
@@ -180,13 +207,13 @@ getAudioCaptcha authorIP = do
 
 -- | requests Mollom to verify the result of a CAPTCHA.
 checkCaptcha :: String -- ^solution to the CAPTCHA
+             -> Maybe String -- ^author IP address
              -> MollomMonad Bool
-checkCaptcha solution = do
-  --sessionID <- get
-  let sessionID = Just "ll"
+checkCaptcha solution authorIP = do
+  sessionID <- get
   case sessionID of
     Nothing -> throwError (HMollomError "Mollom Error: no session ID provided")
-    Just s -> do let mRequest = MollomRequest [("session_id", s), ("solution", solution)]
+    Just s -> do let mRequest = MollomRequest $ catSecondMaybes [("session_id", Just s), ("solution", Just solution), ("author_ip", authorIP)]
                  ErrorT . returnStateT . runErrorT $ service "mollom.checkCaptcha" mRequest
 
 -- | retrieves usage statistics from Mollom.
