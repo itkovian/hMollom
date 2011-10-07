@@ -2,8 +2,8 @@ name:                hMollom
 version:             0.2.2
 cabal-version:       >= 1.6
 stability:           experimental
-synopsis:            Library to interact with the Mollom anti-spam service
-description:         Library to interact with the Mollom anti-spam service
+synopsis:            Library to interact with the @Mollom anti-spam service
+description:         Library to interact with the @Mollom anti-spam service
 license:             BSD3
 license-file:        LICENSE
 author:              Andy Georges
