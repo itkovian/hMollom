@@ -20,6 +20,7 @@ library
     build-depends:     
         base >= 3 && < 5, 
         haxr >= 3000.5,
+        hoauth >= 0.3.3,
         old-locale >= 1,
         time >= 1.1.4,
         Crypto >= 4.2.0,
