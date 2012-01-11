@@ -1,140 +1,99 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
--- |Interface to the Mollom API
+-- | Interface to the Mollom web service (http://mollom.com),
+--   based on the beta REST API, see http://mollom.com/api/rest.
 module Network.Mollom
-  ( getServerList
-  , checkContent
-  , sendFeedback
-  , getImageCaptcha
-  , getAudioCaptcha
-  , checkCaptcha
-  , getStatistics
-  , verifyKey
-  , detectLanguage
-  , addBlacklistText
-  , removeBlacklistText
-  , listBlacklistText
-  , addBlacklistURL
-  , removeBlacklistURL
-  , listBlacklistURL
-  , MollomConfiguration(..)
-  , MollomValue(..)
+  (-- getServerList
+  --, checkContent
+  --, sendFeedback
+  --, getImageCaptcha
+  --, getAudioCaptcha
+  --, checkCaptcha
+  --, getStatistics
+  --, verifyKey
+  --, detectLanguage
+  --, addBlacklistText
+  --, removeBlacklistText
+  --, listBlacklistText
+  --, addBlacklistURL
+  --, removeBlacklistURL
+  --, listBlacklistURL
+  --, MollomConfiguration(..)
+  --, MollomValue(..)
+  service
   ) where
 
 import Control.Arrow (second)
 import Control.Monad.Error
 import Control.Monad.Reader
 import Control.Monad.State
+import Data.List (intercalate, sort)
 import Data.Maybe(fromJust, isJust)
+import Network.HTTP (getRequest, postRequestWithBody, simpleHTTP)
+import Network.HTTP.Base (HTTPResponse, RequestMethod(..), urlEncode)
+import Network.HTTP.Headers (HeaderName (HdrContentType, HdrAccept), HasHeaders, replaceHeader)
 import Network.XmlRpc.Client
 import Network.XmlRpc.Internals 
 --import Network.XmlRpc.THDeriveXmlRpcType (asXmlRpcStruct)
 
 import Network.Mollom.Internals
-import Network.Mollom.Auth
+import Network.Mollom.OAuth
 import Network.Mollom.MollomMonad
 
 
-mollomFallbackServer :: String
-mollomFallbackServer = "http://xmlrpc2.mollom.com/"
+mollomServer :: String
+mollomServer = "http://dev.mollom.com/v1"
 
-
--- |The hardcoded server list
--- XXX: this should go at the back of the state tracking the serverlist, rather than have it here. When the
--- state tracked list is empty, then we refill it next time with this list
-hardCodedMollomServerList :: [String]
-hardCodedMollomServerList = ["http://xmlrpc1.mollom.com", "http://xmlrpc2.mollom.com", "http://xmlrpc3.mollom.com"]
+testPubKey = "buid5peb664h1fcezn1da61mp143wff6"
+testPrivKey = "14m7q8al6ph6k1smu6qmb3mk89o435f9"
 
 data MollomRequest = MollomRequest [(String, String)]
 
--- | Retrieve a new server list using the MollomMonad approach
--- This is a computation that may fail. Upon failure, we return Nothing.
--- This function should only be called from the service function. There is
--- no fall back if this fails, as we need a valid list of servers to begin with.
-retrieveNewServerList :: MollomConfiguration -> IO (Maybe [String])
-retrieveNewServerList config = do
-  let publicKey = mcPublicKey config
-      privateKey = mcPrivateKey config
-      apiVersion = mcAPIVersion config
-      requestStruct = getAuthenticationInformation publicKey privateKey
-  newServerList <- rsl requestStruct apiVersion hardCodedMollomServerList
-  case newServerList of
-    Left s -> return Nothing
-    Right sl -> return $ Just sl
+
+-- |
+buildEncodedQuery :: [(String, String)] -- ^ The name-value pairs for the query
+                  -> String
+buildEncodedQuery ps = 
+    let sps = sort ps
+    in intercalate "&" $ map (\(n, v) -> intercalate "=" [urlEncode n, urlEncode v]) sps
 
 
--- | rsl does the actual polling of the service' function.
--- Keeping this as a top-level function for now. 
-rsl :: [(String, String)] -> String -> [String] -> IO (Either String [String])
-rsl _ _ [] = return $ Left "Error: no more servers left"
-rsl rq a (server:ss) = do
-   response <- service' rq server a "mollom.getServerList" 
-   case response of
-      Left s -> rsl rq a ss
-      Right v -> return $ Right v
+-- | The service function is the common entrypoint to use the Mollom service. This
+--   is where we actually send the data to Mollom.
+--   FIXME: implement the maximal number of retries
+service :: String             -- ^ Public key
+        -> String             -- ^ Private key
+        -> RequestMethod      -- ^ The HTTP method used in this request.
+        -> String             -- ^ The path to the requested resource
+        -> [(String, String)] -- ^ Request parameters
+        -> [String]           -- ^ Expected returned values
+        -> IO (HTTPResponse String)
+service publicKey privateKey method path params expected = do
+    let oauthHVs = oauthHeaderValues publicKey OAuthHmacSha1
+        oauthSig = oauthSignature OAuthHmacSha1 privateKey method mollomServer path (buildEncodedQuery $ params ++ oauthHVs)
+
+        oauthH   = oauthHeader (("oauth_signature", oauthSig) : oauthHVs)
+        contentH = replaceHeader HdrContentType "application/x-www-form-urlencoded"
+        acceptH  = replaceHeader HdrAccept "application/json;q=0.8"
+
+    putStrLn $ "Generated OAuth header values: " ++ show oauthHVs
+    putStrLn $ "Generated OAuth signature: " ++ show oauthSig
+    putStrLn $ "Encoded query of the parameters and oauth header info: " ++ show (buildEncodedQuery $ params ++ oauthHVs)
+    putStrLn $ "HTTP request: " ++ show ( oauthH . contentH . acceptH 
+                                        $ postRequestWithBody (mollomServer ++ "/" ++ path) "application/x-www-form-urlencoded" (buildEncodedQuery params))
+
+    result <- simpleHTTP (oauthH . contentH . acceptH 
+                         $ case method of
+                              POST -> let body = buildEncodedQuery params 
+                                      in postRequestWithBody (mollomServer ++ "/" ++ path) "application/x-www-form-urlencoded" body
+                              GET -> getRequest ("mollomserver" ++ "/" ++ path)
+                         )
+    case result of
+        Left e -> undefined
+        Right r -> return r
 
 
--- | The 'service' function implements the basic load balancing scheme from
--- <http://mollom.com/api/client-side-load-balancing>. 
---
--- FIXME: It expects the MollomConfiguration record to contain a list of valid servers,
--- obtained either through a cache or a call to getServerList with one of the
--- hardCoded server.
-service :: XmlRpcType a
-        => String        -- ^remote function name
-        -> MollomRequest -- ^request specific data 
-        -> ErrorT MollomError MollomState a
-service function (MollomRequest fields) = do
-  config <- ask
-  let publicKey = mcPublicKey config
-      privateKey = mcPrivateKey config
-      apiVersion = mcAPIVersion config
-      requestStruct = getAuthenticationInformation publicKey privateKey ++ fields
-  serviceLoop config requestStruct apiVersion function 
-
-
-serviceLoop :: XmlRpcType a => MollomConfiguration -> [(String, String)] -> String -> String -> ErrorT MollomError MollomState a
-serviceLoop config r a f = serviceLoop' 
-  where serviceLoop' = do serverList <- get
-                          case serverList of
-                            UninitialisedServerList -> refetchAndLoop
-                            MollomServerList [] -> throwError MollomNoMoreServers
-                            MollomServerList (server:ss) -> do response <- liftIO $ service' r server a f
-                                                               case response of 
-                                                                  Left s -> case take 10 s of
-                                                                              "Error 1100" -> refetchAndLoop 
-                                                                              "Error 1000" -> throwError MollomInternalError
-                                                                              _            -> put (MollomServerList ss) >> serviceLoop'
-                                                                  Right v -> return v
-        refetchAndLoop = do nsl <- liftIO $ retrieveNewServerList config
-                            case nsl of
-                              Nothing -> throwError MollomNoMoreServers
-                              Just sl -> put (MollomServerList sl) >> serviceLoop'
-
--- | Make the actual call to the given Mollom server. 
--- 
--- We unwrap the ErrorT such that we get the Left error message back when Mollom gives a fault. 
-service' :: XmlRpcType a => [(String, String)] -> String -> String -> String -> IO (Either String a)
-service' requestStruct server api function = do
-  response <- runErrorT $ call (mollomFallbackServer ++ mollomApiVersion ++ "/") function [toValue . map (second toValue) $ requestStruct]
-  case response of 
-    Left s -> return $ Left s
-    Right v -> runErrorT $ fromValue v
-
-returnStateT a = StateT $ \s -> liftM (flip (,) s) a
-
--- | request a list of Mollom servers that can handle a site's calls.
-getServerList :: MollomMonad [String]
-getServerList = do
-  put Nothing -- no session ID here
-  response <- ErrorT . returnStateT . runErrorT $ service "mollom.getServerList" (MollomRequest [])
-  lift . lift . put $ MollomServerList response
-  return response
-  
-catSecondMaybes :: [(k, Maybe v)] -> [(k, v)]
-catSecondMaybes = map (second fromJust) . filter (isJust . snd)
-
-
+{-
 -- | asks Mollom whether the specified message is legitimate.
 checkContent :: Maybe String -- ^Current session ID
               -> Maybe String -- ^Title of submitted post
@@ -285,4 +244,4 @@ removeBlacklistURL url = do
 listBlacklistURL :: MollomMonad [[(String, MollomValue)]] -- ^List of the current blacklisted URLs for the website corresponding to the public and private keypair
 listBlacklistURL = ErrorT . returnStateT . runErrorT $ service "mollom.listBlacklistURL" (MollomRequest [])
 
-
+-}
