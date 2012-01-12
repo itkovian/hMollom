@@ -5,10 +5,12 @@ module Network.Mollom.Internals
   , MollomConfiguration(..)
   , MollomError(..)
   , MollomValue(..)
-  , MollomServerList(..)
+  , MollomResponse(..)
   ) where
 
 import Control.Monad.Error
+import Network.HTTP.Stream (ConnError(..))
+import Network.HTTP.Base (ResponseCode)
 import Network.XmlRpc.Client
 import Network.XmlRpc.Internals 
 
@@ -25,18 +27,23 @@ data MollomConfiguration = MollomConfiguration
   , mcAPIVersion :: String
   } deriving (Eq, Ord, Show)
 
-data MollomServerList = UninitialisedServerList | MollomServerList [String] deriving (Eq, Ord, Show)
 
-data MollomError = MollomInternalError 
-                 | MollomRefresh
-                 | MollomServerBusy 
-                 | MollomNoMoreServers
-                 | HMollomError String deriving (Eq, Ord, Show)
+data MollomError = Unauthorized
+                 | Forbidden
+                 | ResourceNotFound
+                 | CMollomError ConnError
+                 | HMollomError String deriving (Eq,Show)
 
 instance Error MollomError where 
   noMsg = HMollomError "Unknown Error"
   strMsg str = HMollomError str
 
+
+data MollomResponse = MollomResponse 
+                    { code :: ResponseCode
+                    , message :: String
+                    , response :: String -- [(String, MollomValue)]
+                    } deriving (Eq, Show)
 
 data MollomValue = MInt Int
                  | MBool Bool
