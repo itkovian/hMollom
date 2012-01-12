@@ -1,15 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- |Module that implements the Mollom monad stack
--- We wrap the configuration and the serverlist
--- in a Reader and a State, respectively
+-- We wrap the configuration in a Reader
 module Network.Mollom.MollomMonad 
-  ( MollomMonad
---  , createMollomMonad
---  , runMollomMonad
-  , MollomState
---  , runMollomState
+  ( Mollom(..)
   ) where
-
 
 import Control.Monad.Reader
 import Control.Monad.Writer
@@ -19,30 +13,13 @@ import Data.Monoid
 
 import Network.Mollom.Internals
 
-type SessionID = String
-type Server = String
+type ContentID = String
 
-
-
-type MollomState = ReaderT MollomConfiguration (StateT MollomServerList IO)
-type MollomMonad = ErrorT MollomError (StateT (Maybe SessionID) MollomState)
-
-
-
-{-
-newtype Eq a => MollomState a = MollomState {
-    runMollomState :: ReaderT MollomConfiguration (StateT MollomServerList IO) a
-  } deriving (Monad, MonadIO, MonadReader MollomConfiguration, MonadState MollomServerList)
-  -}
-
-{-
-newtype Eq a => MollomMonad a = MollomMonad { 
-    runMollomMonad :: ErrorT String (StateT SessionID MollomState) a
-  } deriving (Monad, MonadIO, MonadState SessionID)
-
--}
-
--- createMollomMonad :: MollomConfiguration -> MollomMonad ()
--- createMollomMonad configuration = MollomMonad $ 
-
+-- | The MollomMonad type is a monad stack that can retain the content ID in its
+--   state (Content, Captcha and Feedback APIs). We also need to have a configuration
+--   that's towed along with the public and private keys.
+newtype Mollom a = Mollom { runMollom :: ErrorT MollomError 
+                                                (StateT (Maybe ContentID) 
+                                                        (ReaderT MollomConfiguration IO)) a 
+                          } deriving (Monad, MonadIO, MonadReader MollomConfiguration, MonadState (Maybe ContentID))
 
