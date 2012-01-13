@@ -45,6 +45,7 @@ import Network.Mollom.Site
 import Network.Mollom.Internals
 import Network.Mollom.OAuth
 import Network.Mollom.MollomMonad
+import Network.Mollom.Whitelist
 
 
 
