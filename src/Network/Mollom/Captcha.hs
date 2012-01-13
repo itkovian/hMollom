@@ -5,8 +5,11 @@
  -
  -}
 
- module Network.Mollom.Captcha
-  () where
+module Network.Mollom.Captcha
+  ( Type(..)
+  , createCaptcha
+  , verifyCaptcha
+  ) where
 
 import Control.Monad.Error
 import Control.Monad.Reader
