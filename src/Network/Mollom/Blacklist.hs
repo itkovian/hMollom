@@ -7,11 +7,11 @@
 module Network.Mollom.Blacklist
   ( Reason(..)
   , Context(..)
-  , createBlackList
+  , createBlacklist
   , updateBlacklist
   , deleteBlacklist
-  --, listBlackList
-  --, readBlackListEntry
+  , listBlacklist
+  , readBlacklistEntry
   ) where
 
 import Control.Monad.Error
@@ -70,14 +70,14 @@ instance Show Match where
   show Contains = "contains"
 
 -- | Create a blacklist entry for the given site.
-createBlackList :: String        -- ^ The value or string to blacklist
+createBlacklist :: String        -- ^ The value or string to blacklist
                 -> Maybe Reason  -- ^ The reason for this blacklisting
                 -> Maybe Context -- ^ Where may the entry match
                 -> Maybe Match   -- ^ How precise should the match be
                 -> Maybe Bool    -- ^ Is the entry live or not
                 -> Maybe String  -- ^ Note
                 -> Mollom MollomResponse
-createBlackList s reason context match status note = do
+createBlacklist s reason context match status note = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
@@ -147,9 +147,9 @@ listBlacklist offset count = do
 
 
 -- | Read the information that is stored for a given blacklist entry.
-readBlacklist :: String  -- ^ ID of the blacklisted entry to read
-              -> Mollom MollomResponse
-readBlacklist id = do
+readBlacklistEntry :: String  -- ^ ID of the blacklisted entry to read
+                   -> Mollom MollomResponse
+readBlacklistEntry id = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
