@@ -6,12 +6,10 @@ module Network.Mollom.MollomMonad
   ) where
 
 import Control.Monad.Reader
-import Control.Monad.Writer
 import Control.Monad.State
 import Control.Monad.Error
-import Data.Monoid
 
-import Network.Mollom.Internals
+import Network.Mollom.Types
 
 type ContentID = String
 

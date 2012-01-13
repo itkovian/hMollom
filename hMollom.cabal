@@ -12,12 +12,18 @@ category:            Network
 maintainer:          itkovian@gmail.com
 build-Type:          Simple
 extra-source-files:  src/Network/Mollom/OAuth.hs
+                     src/Network/Mollom/Blacklist.hs
+                     src/Network/Mollom/Captcha.hs
+                     src/Network/Mollom/Content.hs
+                     src/Network/Mollom/Feedback.hs
                      src/Network/Mollom/Internals.hs
                      src/Network/Mollom/MollomMonad.hs
+                     src/Network/Mollom/Types.hs
 
 
 library
     build-depends:     
+        aeson >= 0.5.0.0,
         base >= 3 && < 5, 
         haxr >= 3000.5,
         old-locale >= 1,

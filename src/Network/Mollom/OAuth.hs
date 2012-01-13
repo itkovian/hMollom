@@ -29,7 +29,7 @@ import System.Locale (defaultTimeLocale)
 import System.Random
 import System.Time
 
-import Network.Mollom.Internals
+import Network.Mollom.Types
 
 data OAuthSignatureMethod = OAuthHmacSha1 
                           | OAuthRsaSha1 
