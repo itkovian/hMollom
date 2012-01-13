@@ -10,10 +10,12 @@ module Network.Mollom.Site
   , listSites
   ) where
 
-import           Control.Monad.Error
-import           Control.Monad.Reader
+import Control.Monad.Error
+import Control.Monad.Reader
+import Data.List(intercalate)
+import Data.Maybe(catMaybes)
 --import           Control.Monad.State
-import           Network.HTTP.Base (HTTPResponse, RequestMethod(..), Response(..), ResponseCode, urlEncode)
+import Network.HTTP.Base (RequestMethod(..))
 
 import Network.Mollom.Internals
 import Network.Mollom.MollomMonad
@@ -48,7 +50,12 @@ listSites offset count = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "site"
+        arguments = case offset `mplus` count of
+                      Nothing -> ""
+                      _       -> "/q?" ++ (intercalate "&" $ catMaybes [ fmap (\o -> "offset=" ++ show o) offset
+                                                                       , fmap (\c -> "count=" ++ show c) count
+                                                                       ])
+        path = "site" ++ arguments
     Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
 
 
