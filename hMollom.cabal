@@ -19,7 +19,7 @@ extra-source-files:  src/Network/Mollom/OAuth.hs
                      src/Network/Mollom/Internals.hs
                      src/Network/Mollom/MollomMonad.hs
                      src/Network/Mollom/Types.hs
-
+                     src/Network/Mollom/Whitelist.hs
 
 library
     build-depends:     
