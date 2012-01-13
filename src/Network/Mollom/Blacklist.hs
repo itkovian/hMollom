@@ -8,14 +8,16 @@ module Network.Mollom.Blacklist
   ( Reason(..)
   , Context(..)
   , createBlackList
-  --, updateBlacklist
-  --, deleteBlacklist
-  --, getBlackList
+  , updateBlacklist
+  , deleteBlacklist
+  --, listBlackList
   --, readBlackListEntry
   ) where
 
 import Control.Monad.Error
 import Control.Monad.Reader
+import Data.List(intercalate)
+import Data.Maybe(catMaybes)
 import Network.HTTP.Base (RequestMethod(..))
 
 import Network.Mollom.Internals
@@ -89,3 +91,69 @@ createBlackList s reason context match status note = do
                               ]
     Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
 
+
+-- | Update an existing blacklist entry. All arguments that are provided as Nothing
+--   default to keeping existing values.
+updateBlacklist :: String        -- ^ ID of the blacklisted entry to update
+                -> Maybe String  -- ^ The blacklisted string or value.
+                -> Maybe Reason  -- ^ The reason for this blacklisting
+                -> Maybe Context -- ^ Where may the entry match
+                -> Maybe Match   -- ^ How precise should the match be
+                -> Maybe Bool    -- ^ Is the entry live or not
+                -> Maybe String  -- ^ Note
+                -> Mollom MollomResponse
+updateBlacklist id s reason context match status note = do
+    config <- ask
+    let pubKey = mcPublicKey config
+        privKey = mcPrivateKey config
+        path = "blacklist/" ++ pubKey ++ "/" ++ id
+        kvs = catSecondMaybes [ ("value", s)
+                              , ("reason", fmap show reason)
+                              , ("context", fmap show context)
+                              , ("match", fmap show match)
+                              , ("status", fmap boolToOneZeroString status)
+                              , ("note", note)
+                              ]
+    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
+
+-- | Delete a blacklisted entry.
+deleteBlacklist :: String    -- ^ ID of the blacklisted entry to delete
+                -> Mollom MollomResponse
+deleteBlacklist id = do
+    config <- ask
+    let pubKey = mcPublicKey config
+        privKey = mcPrivateKey config
+        path = "blacklist/" ++ pubKey ++ "/" ++ id ++ "/delete"
+    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path [] []
+
+
+-- | List the entries in the blacklist for a given set of credentials, 
+--   identified by the site public key.
+--   FIXME: the arguments determination is fugly.
+listBlacklist :: Maybe Int  -- ^ The offset from which to start listing entries. Defaults to 0 when Nothing is given as the argument.
+              -> Maybe Int  -- ^ The number of entries that should be returned. Defaults to all.
+              -> Mollom MollomResponse
+listBlacklist offset count = do
+    config <- ask
+    let pubKey = mcPublicKey config
+        privKey = mcPrivateKey config
+        arguments = case offset `mplus` count of
+                      Nothing -> ""
+                      _       -> "/q?" ++ (intercalate "&" $ catMaybes [ fmap (\o -> "offset=" ++ show o) offset
+                                                                       , fmap (\c -> "count=" ++ show c) count
+                                                                       ])
+        path = "blacklist/" ++ pubKey ++ arguments
+    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
+
+
+-- | Read the information that is stored for a given blacklist entry.
+readBlacklist :: String  -- ^ ID of the blacklisted entry to read
+              -> Mollom MollomResponse
+readBlacklist id = do
+    config <- ask
+    let pubKey = mcPublicKey config
+        privKey = mcPrivateKey config
+        path = "blacklist/" ++ pubKey ++ "/" ++ id
+    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
+
+ 
