@@ -92,11 +92,11 @@ updateWhitelist :: String        -- ^ ID of the whitelisted entry to update
                 -> Maybe Bool    -- ^ Is the entry live or not
                 -> Maybe String  -- ^ Note
                 -> Mollom MollomResponse
-updateWhitelist id s context status note = do
+updateWhitelist entryId s context status note = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "whitelist/" ++ pubKey ++ "/" ++ id
+        path = "whitelist/" ++ pubKey ++ "/" ++ entryId
         kvs = [ ("value", s)
               , ("context", fmap show context)
               , ("status", fmap boolToOneZeroString status)
@@ -107,11 +107,11 @@ updateWhitelist id s context status note = do
 -- | Delete a whitelisted entry.
 deleteWhitelist :: String    -- ^ ID of the whitelisted entry to delete
                 -> Mollom MollomResponse
-deleteWhitelist id = do
+deleteWhitelist entryId = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "whitelist/" ++ pubKey ++ "/" ++ id ++ "/delete"
+        path = "whitelist/" ++ pubKey ++ "/" ++ entryId ++ "/delete"
     mollomService pubKey privKey POST path [] []
 
 
@@ -137,11 +137,11 @@ listWhitelist offset count = do
 -- | Read the information that is stored for a given whitelist entry.
 readWhitelist :: String  -- ^ ID of the whitelisted entry to read
               -> Mollom MollomResponse
-readWhitelist id = do
+readWhitelist entryId = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "whitelist/" ++ pubKey ++ "/" ++ id
+        path = "whitelist/" ++ pubKey ++ "/" ++ entryId
     mollomService pubKey privKey GET path [] []
 
  
