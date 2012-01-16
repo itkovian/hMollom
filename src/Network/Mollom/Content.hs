@@ -16,7 +16,7 @@ import Control.Monad.Reader
 import Data.List (intercalate)
 import Network.HTTP.Base (RequestMethod(..))
 
-import Network.Mollom.Internals
+import Network.Mollom.Helper
 import Network.Mollom.MollomMonad
 import Network.Mollom.Types
 
@@ -82,7 +82,7 @@ checkContent contentID title body authorName authorURL authorEmail authorOpenID 
               , ("contextTitle", parentTitle)
               ]
         path = case contentID of
-                  Just id -> "content/" ++ id
+                  Just cid -> "content/" ++ cid
                   Nothing -> "content"
     in checkContent' path kvs
 
