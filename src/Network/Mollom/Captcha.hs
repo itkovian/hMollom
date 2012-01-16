@@ -34,14 +34,14 @@ createCaptcha :: Type         -- ^ The type of captcha that should be created.
               -> Maybe Bool   -- ^ Use SSL if True (only for paid subscriptions).
               -> Maybe String -- ^ Optional content ID to refer to.
               -> Mollom MollomResponse
-createCaptcha t ssl id = do
+createCaptcha t ssl captchId = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "captcha"
         kvs = [ ("type", Just $ show t)
               , ("ssl", fmap boolToOneZeroString ssl)
-              , ("contentId", id)
+              , ("contentId", captchId)
               ]
     mollomService pubKey privKey POST path kvs []
 
@@ -57,11 +57,11 @@ verifyCaptcha :: String         -- ^The captcha ID to be verified.
               -> Maybe Int      -- ^The time that must have passed before the same author can post again. Defaults to 15.
               -> Maybe String   -- ^Client-side honeypot value, if any.
               -> Mollom MollomResponse
-verifyCaptcha id authorName authorURL authorEmail authorOpenIds authorIP authorSiteID rateLimit honeypot = do
+verifyCaptcha captchId authorName authorURL authorEmail authorOpenIds authorIP authorSiteID rateLimit honeypot = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "captcha/" ++ id
+        path = "captcha/" ++ captchId
         kvs = [ ("authorName", authorName)
               , ("authorUrl", authorURL)
               , ("authorMail", authorEmail)
