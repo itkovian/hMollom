@@ -20,7 +20,7 @@ import Data.List(intercalate)
 import Data.Maybe(catMaybes)
 import Network.HTTP.Base (RequestMethod(..))
 
-import Network.Mollom.Internals
+import Network.Mollom.Helper
 import Network.Mollom.MollomMonad
 import Network.Mollom.Types
 

@@ -107,4 +107,3 @@ instance XmlRpcType MollomValue where
   getType (MString _) = TString
 
 
-

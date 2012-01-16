@@ -46,6 +46,4 @@ runMollom m config state = do
                  (Left err, _) -> Left err
                  (Right r, cid) -> Right (cid, r)
 
---mkMollom :: MollomConfiguration -> Maybe Int -> Mollom a
---mkMollom 
 

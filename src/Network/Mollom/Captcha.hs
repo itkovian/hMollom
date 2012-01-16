@@ -16,7 +16,7 @@ import Control.Monad.Reader
 import Data.List (intercalate)
 import Network.HTTP.Base (RequestMethod(..))
 
-import Network.Mollom.Internals
+import Network.Mollom.Helper
 import Network.Mollom.MollomMonad
 import Network.Mollom.Types
 

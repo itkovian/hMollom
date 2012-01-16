@@ -20,7 +20,7 @@ import Data.List(intercalate)
 import Data.Maybe(catMaybes)
 import Network.HTTP.Base (RequestMethod(..))
 
-import Network.Mollom.Internals
+import Network.Mollom.Helper
 import Network.Mollom.MollomMonad
 import Network.Mollom.Types
 
@@ -68,6 +68,8 @@ data Match = Exact
 instance Show Match where
   show Exact = "exact"
   show Contains = "contains"
+
+
 
 -- | Create a blacklist entry for the given site.
 createBlacklist :: String        -- ^ The value or string to blacklist

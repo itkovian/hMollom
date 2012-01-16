@@ -11,7 +11,6 @@ module Network.Mollom.Internals
   , MollomError(..)
   --, MollomValue(..)
   , MollomResponse(..)
-  , boolToOneZeroString
   , service
   ) where
 
@@ -37,9 +36,6 @@ mollomTimeFormat = "%Y-%m-%dT%H:%M:%S.000+0200"
 catSecondMaybes :: [(k, Maybe v)] -> [(k, v)]
 catSecondMaybes = map (second fromJust) . filter (isJust . snd)
 
-boolToOneZeroString :: Bool -> String
-boolToOneZeroString True = "1"
-boolToOneZeroString False = "0"
 
 
 -- | Encode the parameters after sorting them.

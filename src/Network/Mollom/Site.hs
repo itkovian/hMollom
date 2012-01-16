@@ -17,7 +17,6 @@ import Data.Maybe(catMaybes)
 --import           Control.Monad.State
 import Network.HTTP.Base (RequestMethod(..))
 
-import Network.Mollom.Internals
 import Network.Mollom.MollomMonad
 import Network.Mollom.Types
 
