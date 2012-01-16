@@ -7,13 +7,13 @@
 
 module Network.Mollom.Feedback
   ( Reason(..)
+  , sendFeedback
   ) where
 
 import Control.Monad.Error
 import Control.Monad.Reader
 import Network.HTTP.Base (RequestMethod(..))
 
-import Network.Mollom.Internals
 import Network.Mollom.MollomMonad
 import Network.Mollom.Types
 
@@ -48,8 +48,9 @@ sendFeedback contentId captchaId reason = do
                     let pubKey = mcPublicKey config
                         privKey = mcPrivateKey config
                         path = "feedback"
-                        kvs = catSecondMaybes [ ("contentId", contentId)
-                                              , ("captchaId", captchaId)
-                                              ]
-                    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
+                        kvs = [ ("contentId", contentId)
+                              , ("captchaId", captchaId)
+                              ]
+                    mollomService pubKey privKey POST path kvs []
+
 

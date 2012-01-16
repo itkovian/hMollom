@@ -61,7 +61,7 @@ instance XmlRpcType MollomValue where
   fromValue (ValueBool b) = maybeToM "" (Just (MBool b)) 
   fromValue (ValueDouble d) = maybeToM "" (Just (MDouble d))
   fromValue (ValueString s) = maybeToM "" (Just (MString s))
-  
+
   getType (MInt _) = TInt
   getType (MBool _) = TBool
   getType (MDouble _) = TDouble

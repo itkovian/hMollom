@@ -39,11 +39,11 @@ createCaptcha t ssl id = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "captcha"
-        kvs = catSecondMaybes [ ("type", Just $ show t)
-                              , ("ssl", fmap boolToOneZeroString ssl)
-                              , ("contentId", id)
-                              ]
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
+        kvs = [ ("type", Just $ show t)
+              , ("ssl", fmap boolToOneZeroString ssl)
+              , ("contentId", id)
+              ]
+    mollomService pubKey privKey POST path kvs []
 
 
 
@@ -62,14 +62,14 @@ verifyCaptcha id authorName authorURL authorEmail authorOpenIds authorIP authorS
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "captcha/" ++ id
-        kvs = catSecondMaybes [ ("authorName", authorName)
-                              , ("authorUrl", authorURL)
-                              , ("authorMail", authorEmail)
-                              , ("authorOpenid", fmap (intercalate " ") authorOpenIds)
-                              , ("authorIp", authorIP)
-                              , ("authorId", authorSiteID)
-                              , ("rateLimit", fmap show rateLimit)
-                              , ("honeypot", honeypot)
-                              ]
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
+        kvs = [ ("authorName", authorName)
+              , ("authorUrl", authorURL)
+              , ("authorMail", authorEmail)
+              , ("authorOpenid", fmap (intercalate " ") authorOpenIds)
+              , ("authorIp", authorIP)
+              , ("authorId", authorSiteID)
+              , ("rateLimit", fmap show rateLimit)
+              , ("honeypot", honeypot)
+              ]
+    mollomService pubKey privKey POST path kvs []
 

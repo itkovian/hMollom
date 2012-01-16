@@ -76,12 +76,12 @@ createWhitelist s context status note = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "whitelist/" ++ pubKey
-        kvs = catSecondMaybes [ ("value", Just s)
-                              , ("context", fmap show context)
-                              , ("status", fmap boolToOneZeroString status)
-                              , ("note", note)
-                              ]
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
+        kvs = [ ("value", Just s)
+              , ("context", fmap show context)
+              , ("status", fmap boolToOneZeroString status)
+              , ("note", note)
+              ]
+    mollomService pubKey privKey POST path kvs []
 
 
 -- | Update an existing whitelist entry. All arguments that are provided as Nothing
@@ -97,12 +97,12 @@ updateWhitelist id s context status note = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "whitelist/" ++ pubKey ++ "/" ++ id
-        kvs = catSecondMaybes [ ("value", s)
-                              , ("context", fmap show context)
-                              , ("status", fmap boolToOneZeroString status)
-                              , ("note", note)
-                              ]
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
+        kvs = [ ("value", s)
+              , ("context", fmap show context)
+              , ("status", fmap boolToOneZeroString status)
+              , ("note", note)
+              ]
+    mollomService pubKey privKey POST path kvs []
 
 -- | Delete a whitelisted entry.
 deleteWhitelist :: String    -- ^ ID of the whitelisted entry to delete
@@ -112,7 +112,7 @@ deleteWhitelist id = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "whitelist/" ++ pubKey ++ "/" ++ id ++ "/delete"
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path [] []
+    mollomService pubKey privKey POST path [] []
 
 
 -- | List the entries in the whitelist for a given set of credentials, 
@@ -131,7 +131,7 @@ listWhitelist offset count = do
                                                                        , fmap (\c -> "count=" ++ show c) count
                                                                        ])
         path = "whitelist/" ++ pubKey ++ arguments
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
+    mollomService pubKey privKey GET path [] []
 
 
 -- | Read the information that is stored for a given whitelist entry.
@@ -142,6 +142,6 @@ readWhitelist id = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "whitelist/" ++ pubKey ++ "/" ++ id
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
+    mollomService pubKey privKey GET path [] []
 
  

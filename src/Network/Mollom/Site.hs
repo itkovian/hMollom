@@ -28,7 +28,7 @@ readSite = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "content/ " ++ ( mcPublicKey config)
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
+    mollomService pubKey privKey GET path [] []
 
 
 -- | Request that a specific site is deleted from the Mollom service
@@ -38,7 +38,7 @@ deleteSite = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "content/ " ++ ( mcPublicKey config) ++ "/delete"
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path [] []
+    mollomService pubKey privKey POST path [] []
 
 
 -- | List all sites that can be accessed with the given authentication
@@ -56,6 +56,6 @@ listSites offset count = do
                                                                        , fmap (\c -> "count=" ++ show c) count
                                                                        ])
         path = "site" ++ arguments
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
+    mollomService pubKey privKey GET path [] []
 
 

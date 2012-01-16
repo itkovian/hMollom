@@ -63,24 +63,24 @@ checkContent :: Maybe String  -- ^Existing content ID.
              -> Maybe String  -- ^ Title of said parental context.
              -> Mollom MollomResponse -- ^The monad in which the function is executing.
 checkContent contentID title body authorName authorURL authorEmail authorOpenID authorIP authorSiteID checks unsure strictness rateLimit honeypot stored storedURL storedParentURL parentTitle =
-    let kvs = catSecondMaybes [ ("postTitle", title)
-                              , ("postBody", body)
-                              , ("authorName", authorName)
-                              , ("authorUrl", authorURL)
-                              , ("authorMail", authorEmail)
-                              , ("authorOpenid", authorOpenID)
-                              , ("authorIp", authorIP)
-                              , ("authorId", authorSiteID)
-                              , ("checks", fmap (intercalate "|" . map show) checks)
-                              , ("unsure", fmap boolToOneZeroString unsure)
-                              , ("strictness", fmap show strictness)
-                              , ("rateLimit", fmap show rateLimit)
-                              , ("honeypot", honeypot)
-                              , ("stored", fmap boolToOneZeroString stored)
-                              , ("url", storedURL)
-                              , ("contextUrl", storedParentURL)
-                              , ("contextTitle", parentTitle)
-                              ]
+    let kvs = [ ("postTitle", title)
+              , ("postBody", body)
+              , ("authorName", authorName)
+              , ("authorUrl", authorURL)
+              , ("authorMail", authorEmail)
+              , ("authorOpenid", authorOpenID)
+              , ("authorIp", authorIP)
+              , ("authorId", authorSiteID)
+              , ("checks", fmap (intercalate "|" . map show) checks)
+              , ("unsure", fmap boolToOneZeroString unsure)
+              , ("strictness", fmap show strictness)
+              , ("rateLimit", fmap show rateLimit)
+              , ("honeypot", honeypot)
+              , ("stored", fmap boolToOneZeroString stored)
+              , ("url", storedURL)
+              , ("contextUrl", storedParentURL)
+              , ("contextTitle", parentTitle)
+              ]
         path = case contentID of
                   Just id -> "content/" ++ id
                   Nothing -> "content"
@@ -88,13 +88,13 @@ checkContent contentID title body authorName authorURL authorEmail authorOpenID 
 
 
 checkContent' :: String             -- ^ Path to the requested resource.
-              -> [(String, String)] -- ^ Data parameters to pass to the service call
+              -> [(String, Maybe String)] -- ^ Data parameters to pass to the service call
               -> Mollom MollomResponse
 checkContent' path params = do
     config <- ask 
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path params []
+    mollomService pubKey privKey POST path params []
 
 
 

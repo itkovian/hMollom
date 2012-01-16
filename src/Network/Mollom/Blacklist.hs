@@ -82,14 +82,14 @@ createBlacklist s reason context match status note = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "blacklist/" ++ pubKey
-        kvs = catSecondMaybes [ ("value", Just s)
-                              , ("reason", fmap show reason)
-                              , ("context", fmap show context)
-                              , ("match", fmap show match)
-                              , ("status", fmap boolToOneZeroString status)
-                              , ("note", note)
-                              ]
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
+        kvs = [ ("value", Just s)
+              , ("reason", fmap show reason)
+              , ("context", fmap show context)
+              , ("match", fmap show match)
+              , ("status", fmap boolToOneZeroString status)
+              , ("note", note)
+              ]
+    mollomService pubKey privKey POST path kvs []
 
 
 -- | Update an existing blacklist entry. All arguments that are provided as Nothing
@@ -107,14 +107,14 @@ updateBlacklist id s reason context match status note = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "blacklist/" ++ pubKey ++ "/" ++ id
-        kvs = catSecondMaybes [ ("value", s)
-                              , ("reason", fmap show reason)
-                              , ("context", fmap show context)
-                              , ("match", fmap show match)
-                              , ("status", fmap boolToOneZeroString status)
-                              , ("note", note)
-                              ]
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path kvs []
+        kvs = [ ("value", s)
+              , ("reason", fmap show reason)
+              , ("context", fmap show context)
+              , ("match", fmap show match)
+              , ("status", fmap boolToOneZeroString status)
+              , ("note", note)
+              ]
+    mollomService pubKey privKey POST path kvs []
 
 -- | Delete a blacklisted entry.
 deleteBlacklist :: String    -- ^ ID of the blacklisted entry to delete
@@ -124,7 +124,7 @@ deleteBlacklist id = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "blacklist/" ++ pubKey ++ "/" ++ id ++ "/delete"
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey POST path [] []
+    mollomService pubKey privKey POST path [] []
 
 
 -- | List the entries in the blacklist for a given set of credentials, 
@@ -143,7 +143,7 @@ listBlacklist offset count = do
                                                                        , fmap (\c -> "count=" ++ show c) count
                                                                        ])
         path = "blacklist/" ++ pubKey ++ arguments
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
+    mollomService pubKey privKey GET path [] []
 
 
 -- | Read the information that is stored for a given blacklist entry.
@@ -154,6 +154,6 @@ readBlacklistEntry id = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "blacklist/" ++ pubKey ++ "/" ++ id
-    Mollom $ ErrorT . liftIO . runErrorT $ service pubKey privKey GET path [] []
+    mollomService pubKey privKey GET path [] []
 
  

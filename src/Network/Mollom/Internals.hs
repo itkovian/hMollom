@@ -12,7 +12,6 @@ module Network.Mollom.Internals
   --, MollomValue(..)
   , MollomResponse(..)
   , boolToOneZeroString
-  , catSecondMaybes
   , service
   ) where
 
@@ -37,7 +36,6 @@ mollomTimeFormat = "%Y-%m-%dT%H:%M:%S.000+0200"
 
 catSecondMaybes :: [(k, Maybe v)] -> [(k, v)]
 catSecondMaybes = map (second fromJust) . filter (isJust . snd)
-
 
 boolToOneZeroString :: Bool -> String
 boolToOneZeroString True = "1"
@@ -72,19 +70,20 @@ service :: String             -- ^ Public key
         -> String             -- ^ Private key
         -> RequestMethod      -- ^ The HTTP method used in this request.
         -> String             -- ^ The path to the requested resource
-        -> [(String, String)] -- ^ Request parameters
+        -> [(String, Maybe String)] -- ^ Request parameters
         -> [String]           -- ^ Expected returned values
         -> ErrorT MollomError IO MollomResponse -- :: ErrorT (IO (Either MollomError (HTTPResponse String)))
 service publicKey privateKey method path params expected = do
-    let oauthHVs = oauthHeaderValues publicKey OAuthHmacSha1
+    let params' = catSecondMaybes params
+        oauthHVs = oauthHeaderValues publicKey OAuthHmacSha1
         oauthSig = oauthSignature OAuthHmacSha1 privateKey method mollomServer path 
-                                  (buildEncodedQuery $ params ++ oauthHVs)
+                                  (buildEncodedQuery $ params' ++ oauthHVs)
         oauthH   = oauthHeader (("oauth_signature", oauthSig) : oauthHVs)
         contentH = replaceHeader HdrContentType "application/x-www-form-urlencoded"
         acceptH  = replaceHeader HdrAccept "application/json;q=0.8"
     result <- liftIO $ liftM processResponse $ simpleHTTP (oauthH . contentH . acceptH 
                                                           $ case method of
-                                                               POST -> let body = buildEncodedQuery params 
+                                                               POST -> let body = buildEncodedQuery params'
                                                                        in postRequestWithBody (mollomServer ++ "/" ++ path) 
                                                                           "application/x-www-form-urlencoded" 
                                                                           body
