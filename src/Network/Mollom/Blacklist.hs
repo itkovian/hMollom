@@ -102,11 +102,11 @@ updateBlacklist :: String        -- ^ ID of the blacklisted entry to update
                 -> Maybe Bool    -- ^ Is the entry live or not
                 -> Maybe String  -- ^ Note
                 -> Mollom MollomResponse
-updateBlacklist id s reason context match status note = do
+updateBlacklist entryId s reason context match status note = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "blacklist/" ++ pubKey ++ "/" ++ id
+        path = "blacklist/" ++ pubKey ++ "/" ++ entryId
         kvs = [ ("value", s)
               , ("reason", fmap show reason)
               , ("context", fmap show context)
@@ -119,11 +119,11 @@ updateBlacklist id s reason context match status note = do
 -- | Delete a blacklisted entry.
 deleteBlacklist :: String    -- ^ ID of the blacklisted entry to delete
                 -> Mollom MollomResponse
-deleteBlacklist id = do
+deleteBlacklist entryId = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "blacklist/" ++ pubKey ++ "/" ++ id ++ "/delete"
+        path = "blacklist/" ++ pubKey ++ "/" ++ entryId ++ "/delete"
     mollomService pubKey privKey POST path [] []
 
 
@@ -149,11 +149,11 @@ listBlacklist offset count = do
 -- | Read the information that is stored for a given blacklist entry.
 readBlacklistEntry :: String  -- ^ ID of the blacklisted entry to read
                    -> Mollom MollomResponse
-readBlacklistEntry id = do
+readBlacklistEntry entryId = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "blacklist/" ++ pubKey ++ "/" ++ id
+        path = "blacklist/" ++ pubKey ++ "/" ++ entryId
     mollomService pubKey privKey GET path [] []
 
- 
+
