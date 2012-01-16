@@ -57,7 +57,7 @@ buildEncodedQuery ps =
 processResponse :: Result (HTTPResponse String) -> Either MollomError MollomResponse
 processResponse result =
     case result of 
-        Left ce -> Left (CMollomError ce)
+        Left ce -> Left (ConnectionError ce)
         Right r -> Right MollomResponse { code = rspCode r
                                          , message = rspReason r
                                          , response = rspBody r

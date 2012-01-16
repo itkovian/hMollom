@@ -9,6 +9,12 @@ module Network.Mollom.Types
   , MollomConfiguration(..)
   , MollomError(..)
   , MollomResponse(..)
+  , BlacklistError(..)
+  , CaptchaError(..)
+  , ContentError(..)
+  , FeedbackError(..)
+  , SiteError(..)
+  , WhitelistError(..)
   ) where
 
 import           Control.Monad.Error
@@ -27,17 +33,50 @@ data MollomConfiguration = MollomConfiguration
   , mcAPIVersion :: String
   } deriving (Eq, Ord, Show)
 
+data MollomError = ConnectionError ConnError            -- ^HTTP connection error
+                 | BlacklistError BlacklistError String 
+                 | CaptchaError CaptchaError String
+                 | ContentError ContentError String
+                 | FeedbackError FeedbackError String
+                 | SiteError SiteError String
+                 | WhitelistError WhitelistError String
+                 | Unauthorized String                  -- ^General unauthorised request error. 401.
+                 | Forbidden String                     -- ^Unauthorised to make this request. 403.
+                 | NotFound String                      -- ^Your general oops, you're making the wrong request. 404.
+                 | Message String
+                 deriving (Eq, Show)
 
-data MollomError = Unauthorized
-                 | Forbidden
-                 | ResourceNotFound
-                 | UnknownSite
-                 | CMollomError ConnError
-                 | HMollomError String deriving (Eq,Show)
+instance Error MollomError where
+    noMsg = Message ""
+    strMsg s = Message s
 
-instance Error MollomError where 
-  noMsg = HMollomError "Unknown Error"
-  strMsg str = HMollomError str
+-- | Errors returned by the blacklist API
+data BlacklistError = UnknownBlacklistEntry  -- The specified entry does not exist. 404.
+                    deriving (Eq, Show)
+
+-- | Errors returned by the captcha API
+data CaptchaError = CaptchaDoesNotExist      -- ^The resource was never created. 404.
+                  | CaptchaAlreadyProcessed  -- ^The resource was created but was already processed and can thus no longer be solved. 409.
+                  | CaptchaExpired           -- ^The resource was created but can no longer be solved since it expired. 410.
+                  deriving (Eq, Show)
+
+-- | Errors returned bu the content API
+data ContentError = Whoops
+                  deriving (Eq, Show)
+
+-- | Errors returned by the feedback API
+data FeedbackError = FeedbackMissingID     -- ^The request did not specify either a content or captcha ID. 400.
+                   | FeedbackUnknownReason -- ^The reason is not one that is supported by Mollom. 400. FIXME: this should be a different HTTP code.
+                   deriving (Eq, Show)
+
+-- | Errors returned by the site API
+data SiteError = SiteUnknown -- ^ We have no clue who you are. 404.
+               deriving (Eq, Show)
+
+-- | Errors returned by the whitelist API
+data WhitelistError = UnknownWhitelistEntry  -- ^The specified entry does not exist. 404.
+                    deriving (Eq, Show)
+
 
 
 data MollomResponse = MollomResponse 
