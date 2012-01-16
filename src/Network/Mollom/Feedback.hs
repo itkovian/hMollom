@@ -50,6 +50,7 @@ sendFeedback contentId captchaId reason = do
                         path = "feedback"
                         kvs = [ ("contentId", contentId)
                               , ("captchaId", captchaId)
+                              , ("reason", Just $ show reason)
                               ]
                     mollomService pubKey privKey POST path kvs []
 
