@@ -6,6 +6,8 @@
 
 module Network.Mollom.Types
   ( mollomApiVersion
+  , addMessage
+  , generalErrors
   , MollomConfiguration(..)
   , MollomError(..)
   , MollomResponse(..)
@@ -33,6 +35,13 @@ data MollomConfiguration = MollomConfiguration
   , mcAPIVersion :: String
   } deriving (Eq, Ord, Show)
 
+
+generalErrors :: [(ResponseCode, MollomError)]
+generalErrors = [ ((4,0,1), Unauthorised "")
+                , ((4,0,3), Forbidden "")
+                , ((4,0,4), NotFound "")
+                ]
+
 data MollomError = ConnectionError ConnError            -- ^HTTP connection error
                  | BlacklistError BlacklistError String 
                  | CaptchaError CaptchaError String
@@ -40,7 +49,7 @@ data MollomError = ConnectionError ConnError            -- ^HTTP connection erro
                  | FeedbackError FeedbackError String
                  | SiteError SiteError String
                  | WhitelistError WhitelistError String
-                 | Unauthorized String                  -- ^General unauthorised request error. 401.
+                 | Unauthorised String                  -- ^General unauthorised request error. 401.
                  | Forbidden String                     -- ^Unauthorised to make this request. 403.
                  | NotFound String                      -- ^Your general oops, you're making the wrong request. 404.
                  | Message String
@@ -76,6 +85,23 @@ data SiteError = SiteUnknown -- ^ We have no clue who you are. 404.
 -- | Errors returned by the whitelist API
 data WhitelistError = UnknownWhitelistEntry  -- ^The specified entry does not exist. 404.
                     deriving (Eq, Show)
+
+
+
+-- | Replace the String message in the error
+addMessage :: MollomError -> String -> MollomError
+addMessage (BlacklistError b _) s = BlacklistError b s
+addMessage (CaptchaError c _) s = CaptchaError c s
+addMessage (ContentError c _) s = ContentError c s
+addMessage (FeedbackError f _) s = FeedbackError f s
+addMessage (SiteError s' _) s = SiteError s' s 
+addMessage (WhitelistError w _) s = WhitelistError w s
+addMessage (Unauthorised _) s = Unauthorised s
+addMessage (Forbidden _) s = Forbidden s
+addMessage (NotFound _) s = NotFound s
+addMessage (Message _) s = Message s
+
+
 
 
 

@@ -26,8 +26,9 @@ readSite = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "content/ " ++ ( mcPublicKey config)
-    mollomService pubKey privKey GET path [] []
+        path = "content/" ++ ( mcPublicKey config)
+        errors = generalErrors
+    mollomService pubKey privKey GET path [] [] errors
 
 
 -- | Request that a specific site is deleted from the Mollom service
@@ -36,8 +37,9 @@ deleteSite = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "content/ " ++ ( mcPublicKey config) ++ "/delete"
-    mollomService pubKey privKey POST path [] []
+        path = "content/" ++ ( mcPublicKey config) ++ "/delete"
+        errors = [((4,0,4), SiteError SiteUnknown "")]
+    mollomService pubKey privKey POST path [] [] errors
 
 
 -- | List all sites that can be accessed with the given authentication
@@ -55,6 +57,7 @@ listSites offset count = do
                                                                        , fmap (\c -> "count=" ++ show c) count
                                                                        ])
         path = "site" ++ arguments
-    mollomService pubKey privKey GET path [] []
+        errors = generalErrors
+    mollomService pubKey privKey GET path [] [] errors
 
 

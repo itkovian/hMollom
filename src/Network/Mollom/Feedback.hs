@@ -43,7 +43,7 @@ sendFeedback :: Maybe String  -- ^Existing content ID
              -> Mollom MollomResponse
 sendFeedback contentId captchaId reason = do
     case contentId `mplus` captchaId of
-      Nothing -> undefined -- this should be an error
+      Nothing -> undefined
       Just _  -> do config <- ask
                     let pubKey = mcPublicKey config
                         privKey = mcPrivateKey config
@@ -52,6 +52,7 @@ sendFeedback contentId captchaId reason = do
                               , ("captchaId", captchaId)
                               , ("reason", Just $ show reason)
                               ]
-                    mollomService pubKey privKey POST path kvs []
+                        errors = generalErrors
+                    mollomService pubKey privKey POST path kvs [] errors
 
 

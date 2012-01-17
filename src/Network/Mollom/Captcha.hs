@@ -43,7 +43,8 @@ createCaptcha t ssl captchId = do
               , ("ssl", fmap boolToOneZeroString ssl)
               , ("contentId", captchId)
               ]
-    mollomService pubKey privKey POST path kvs []
+        errors = generalErrors
+    mollomService pubKey privKey POST path kvs [] errors
 
 
 
@@ -71,5 +72,6 @@ verifyCaptcha captchId authorName authorURL authorEmail authorOpenIds authorIP a
               , ("rateLimit", fmap show rateLimit)
               , ("honeypot", honeypot)
               ]
-    mollomService pubKey privKey POST path kvs []
+        errors = generalErrors
+    mollomService pubKey privKey POST path kvs [] errors
 

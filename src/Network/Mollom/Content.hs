@@ -62,8 +62,11 @@ checkContent :: Maybe String  -- ^Existing content ID.
              -> Maybe String  -- ^ Absolute URL to the content's parent context, e.g., the article of forum thread a comment is placed on.
              -> Maybe String  -- ^ Title of said parental context.
              -> Mollom MollomResponse -- ^The monad in which the function is executing.
-checkContent contentID title body authorName authorURL authorEmail authorOpenID authorIP authorSiteID checks unsure strictness rateLimit honeypot stored storedURL storedParentURL parentTitle =
-    let kvs = [ ("postTitle", title)
+checkContent contentID title body authorName authorURL authorEmail authorOpenID authorIP authorSiteID checks unsure strictness rateLimit honeypot stored storedURL storedParentURL parentTitle = do
+    config <- ask 
+    let pubKey = mcPublicKey config
+        privKey = mcPrivateKey config
+        kvs = [ ("postTitle", title)
               , ("postBody", body)
               , ("authorName", authorName)
               , ("authorUrl", authorURL)
@@ -84,17 +87,9 @@ checkContent contentID title body authorName authorURL authorEmail authorOpenID 
         path = case contentID of
                   Just cid -> "content/" ++ cid
                   Nothing -> "content"
-    in checkContent' path kvs
+        errors = generalErrors
+    mollomService pubKey privKey POST path kvs [] errors
 
-
-checkContent' :: String             -- ^ Path to the requested resource.
-              -> [(String, Maybe String)] -- ^ Data parameters to pass to the service call
-              -> Mollom MollomResponse
-checkContent' path params = do
-    config <- ask 
-    let pubKey = mcPublicKey config
-        privKey = mcPrivateKey config
-    mollomService pubKey privKey POST path params []
 
 
 

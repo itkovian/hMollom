@@ -5,6 +5,7 @@ module Network.Mollom.MollomMonad
   ( Mollom
   , MollomState
   , mollomService
+  , runMollom
   ) where
 
 import Control.Monad.Reader
@@ -35,13 +36,14 @@ mollomService :: String             -- ^ Public key
               -> String             -- ^ The path to the requested resource
               -> [(String, Maybe String)] -- ^ Request parameters
               -> [String]           -- ^ Expected returned values
+              -> [((Int, Int, Int), MollomError)] -- ^Possible error values
               -> Mollom MollomResponse -- :: ErrorT (IO (Either MollomError (HTTPResponse String)))
-mollomService pubKey privKey method path params expected = 
-    wrapMollom $ service pubKey privKey method path params expected
+mollomService pubKey privKey method path params expected errors =
+    wrapMollom $ service pubKey privKey method path params expected errors
 
 runMollom :: Mollom a -> MollomConfiguration -> MollomState -> IO (Either MollomError (Maybe ContentID, a))
-runMollom m config state = do
-    v <- runReaderT (runStateT (runErrorT $ runM m) state) config
+runMollom m config s = do
+    v <- runReaderT (runStateT (runErrorT $ runM m) s) config
     return $ case v of 
                  (Left err, _) -> Left err
                  (Right r, cid) -> Right (cid, r)

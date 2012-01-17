@@ -91,7 +91,8 @@ createBlacklist s reason context match status note = do
               , ("status", fmap boolToOneZeroString status)
               , ("note", note)
               ]
-    mollomService pubKey privKey POST path kvs []
+        errors = generalErrors
+    mollomService pubKey privKey POST path kvs [] errors
 
 
 -- | Update an existing blacklist entry. All arguments that are provided as Nothing
@@ -116,7 +117,8 @@ updateBlacklist entryId s reason context match status note = do
               , ("status", fmap boolToOneZeroString status)
               , ("note", note)
               ]
-    mollomService pubKey privKey POST path kvs []
+        errors = generalErrors
+    mollomService pubKey privKey POST path kvs [] errors
 
 -- | Delete a blacklisted entry.
 deleteBlacklist :: String    -- ^ ID of the blacklisted entry to delete
@@ -126,7 +128,8 @@ deleteBlacklist entryId = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "blacklist/" ++ pubKey ++ "/" ++ entryId ++ "/delete"
-    mollomService pubKey privKey POST path [] []
+        errors = generalErrors
+    mollomService pubKey privKey POST path [] [] errors
 
 
 -- | List the entries in the blacklist for a given set of credentials, 
@@ -145,7 +148,8 @@ listBlacklist offset count = do
                                                                        , fmap (\c -> "count=" ++ show c) count
                                                                        ])
         path = "blacklist/" ++ pubKey ++ arguments
-    mollomService pubKey privKey GET path [] []
+        errors = generalErrors
+    mollomService pubKey privKey GET path [] [] errors
 
 
 -- | Read the information that is stored for a given blacklist entry.
@@ -156,6 +160,7 @@ readBlacklistEntry entryId = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "blacklist/" ++ pubKey ++ "/" ++ entryId
-    mollomService pubKey privKey GET path [] []
+        errors = generalErrors
+    mollomService pubKey privKey GET path [] [] errors
 
 

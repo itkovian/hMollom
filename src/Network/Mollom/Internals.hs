@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {- 
  - (C) 2012, Andy Georges
  -
@@ -16,7 +17,7 @@ module Network.Mollom.Internals
 
 import           Control.Arrow (second)
 import           Control.Monad.Error
-import           Data.List (intercalate, sort)
+import           Data.List (intercalate, lookup, sort)
 import           Data.Maybe(fromJust, isJust)
 import           Network.HTTP (getRequest, postRequestWithBody, simpleHTTP)
 import           Network.HTTP.Base (HTTPResponse, RequestMethod(..), Response(..), ResponseCode, urlEncode)
@@ -47,29 +48,35 @@ buildEncodedQuery ps =
 
 
 
--- | Process the response from the Mollom server, chekcing the return code, 
---   and fill in the associative list with name-value pairs.
---   FIXME: this should also process the HTTP return code and set the error accordingly
-processResponse :: Result (HTTPResponse String) -> Either MollomError MollomResponse
-processResponse result =
+-- | Process the response from the Mollom server, checking the return code.
+--   If there is a connection error, we immediately return the appropriate
+--   error. Otherwise, in case of an error, we check the code and return
+--   the appropriate instance.
+processResponse :: [(ResponseCode, MollomError)] -> Result (HTTPResponse String) -> Either MollomError MollomResponse
+processResponse errors result =
     case result of 
         Left ce -> Left (ConnectionError ce)
-        Right r -> Right MollomResponse { code = rspCode r
-                                         , message = rspReason r
-                                         , response = rspBody r
-                                         }
+        Right r -> let code = rspCode r
+                       message = rspReason r
+                   in case lookup code errors of
+                          Just e  -> Left (addMessage e message)
+                          Nothing -> Right MollomResponse { code = rspCode r
+                                        , message = rspReason r
+                                        , response = rspBody r
+                                        }
 
 -- | The service function is the common entrypoint to use the Mollom service. This
 --   is where we actually send the data to Mollom.
 --   FIXME: implement the maximal number of retries
-service :: String             -- ^ Public key
-        -> String             -- ^ Private key
-        -> RequestMethod      -- ^ The HTTP method used in this request.
-        -> String             -- ^ The path to the requested resource
-        -> [(String, Maybe String)] -- ^ Request parameters
-        -> [String]           -- ^ Expected returned values
+service :: String                               -- ^Public key
+        -> String                               -- ^Private key
+        -> RequestMethod                        -- ^The HTTP method used in this request.
+        -> String                               -- ^The path to the requested resource
+        -> [(String, Maybe String)]             -- ^Request parameters
+        -> [String]                             -- ^Expected returned values
+        -> [((Int, Int, Int), MollomError)]     -- ^Possible error values
         -> ErrorT MollomError IO MollomResponse -- :: ErrorT (IO (Either MollomError (HTTPResponse String)))
-service publicKey privateKey method path params expected = do
+service publicKey privateKey method path params expected errors = do
     let params' = catSecondMaybes params
         oauthHVs = oauthHeaderValues publicKey OAuthHmacSha1
         oauthSig = oauthSignature OAuthHmacSha1 privateKey method mollomServer path 
@@ -77,13 +84,15 @@ service publicKey privateKey method path params expected = do
         oauthH   = oauthHeader (("oauth_signature", oauthSig) : oauthHVs)
         contentH = replaceHeader HdrContentType "application/x-www-form-urlencoded"
         acceptH  = replaceHeader HdrAccept "application/json;q=0.8"
-    result <- liftIO $ liftM processResponse $ simpleHTTP (oauthH . contentH . acceptH 
+    liftIO $ putStrLn $ "URI = " ++ (mollomServer ++ "/" ++ path)
+    result <- liftIO $ liftM (processResponse errors) $ simpleHTTP (oauthH . contentH . acceptH 
                                                           $ case method of
                                                                POST -> let body = buildEncodedQuery params'
                                                                        in postRequestWithBody (mollomServer ++ "/" ++ path) 
                                                                           "application/x-www-form-urlencoded" 
                                                                           body
-                                                               GET -> getRequest ("mollomserver" ++ "/" ++ path)
+                                                               GET -> getRequest (mollomServer ++ "/" ++ path)
+                                                               _ -> undefined
                                                           )
     ErrorT { runErrorT = return result }
 

@@ -81,7 +81,8 @@ createWhitelist s context status note = do
               , ("status", fmap boolToOneZeroString status)
               , ("note", note)
               ]
-    mollomService pubKey privKey POST path kvs []
+        errors = generalErrors
+    mollomService pubKey privKey POST path kvs [] errors
 
 
 -- | Update an existing whitelist entry. All arguments that are provided as Nothing
@@ -102,7 +103,8 @@ updateWhitelist entryId s context status note = do
               , ("status", fmap boolToOneZeroString status)
               , ("note", note)
               ]
-    mollomService pubKey privKey POST path kvs []
+        errors = generalErrors
+    mollomService pubKey privKey POST path kvs [] errors
 
 -- | Delete a whitelisted entry.
 deleteWhitelist :: String    -- ^ ID of the whitelisted entry to delete
@@ -112,7 +114,8 @@ deleteWhitelist entryId = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "whitelist/" ++ pubKey ++ "/" ++ entryId ++ "/delete"
-    mollomService pubKey privKey POST path [] []
+        errors = generalErrors
+    mollomService pubKey privKey POST path [] [] errors
 
 
 -- | List the entries in the whitelist for a given set of credentials, 
@@ -131,7 +134,8 @@ listWhitelist offset count = do
                                                                        , fmap (\c -> "count=" ++ show c) count
                                                                        ])
         path = "whitelist/" ++ pubKey ++ arguments
-    mollomService pubKey privKey GET path [] []
+        errors = generalErrors
+    mollomService pubKey privKey GET path [] [] errors
 
 
 -- | Read the information that is stored for a given whitelist entry.
@@ -142,6 +146,7 @@ readWhitelist entryId = do
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         path = "whitelist/" ++ pubKey ++ "/" ++ entryId
-    mollomService pubKey privKey GET path [] []
+        errors = generalErrors
+    mollomService pubKey privKey GET path [] [] errors
 
  
