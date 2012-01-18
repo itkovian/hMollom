@@ -20,6 +20,7 @@ module Network.Mollom.Types
   ) where
 
 import           Control.Monad.Error
+import qualified Data.Aeson as A
 import           Network.HTTP.Base (Response(..), ResponseCode)
 import           Network.HTTP.Stream (ConnError(..), Result)
 import           Network.XmlRpc.Client
@@ -52,6 +53,7 @@ data MollomError = ConnectionError ConnError            -- ^HTTP connection erro
                  | Unauthorised String                  -- ^General unauthorised request error. 401.
                  | Forbidden String                     -- ^Unauthorised to make this request. 403.
                  | NotFound String                      -- ^Your general oops, you're making the wrong request. 404.
+                 | JSONParseError
                  | Message String
                  deriving (Eq, Show)
 
@@ -105,10 +107,10 @@ addMessage (Message _) s = Message s
 
 
 
-data MollomResponse = MollomResponse 
+data (A.FromJSON a) => MollomResponse a = MollomResponse 
                     { code :: ResponseCode
                     , message :: String
-                    , response :: String -- [(String, MollomValue)]
+                    , response :: a  -- [(String, MollomValue)]
                     } deriving (Eq, Show)
 
 data MollomValue = MInt Int

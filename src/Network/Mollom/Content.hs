@@ -13,6 +13,7 @@ module Network.Mollom.Content
 
 import Control.Monad.Error
 import Control.Monad.Reader
+import qualified Data.Aeson as A
 import Data.List (intercalate)
 import Network.HTTP.Base (RequestMethod(..))
 
@@ -42,7 +43,9 @@ instance Show Strictness where
 
 
 -- | Asks Mollom whether the specified message is legitimate.
-checkContent :: Maybe String  -- ^Existing content ID.
+--   FIXME: contentID should be taken from the Mollom state
+checkContent :: A.FromJSON a
+                => Maybe String  -- ^Existing content ID.
              -> Maybe String  -- ^Title of submitted post.
              -> Maybe String  -- ^Body of submitted post.
              -> Maybe String  -- ^Content author's name.
@@ -61,7 +64,7 @@ checkContent :: Maybe String  -- ^Existing content ID.
              -> Maybe String  -- ^ Absolute URL for the stored content.
              -> Maybe String  -- ^ Absolute URL to the content's parent context, e.g., the article of forum thread a comment is placed on.
              -> Maybe String  -- ^ Title of said parental context.
-             -> Mollom MollomResponse -- ^The monad in which the function is executing.
+             -> Mollom (MollomResponse a) -- ^The monad in which the function is executing.
 checkContent contentID title body authorName authorURL authorEmail authorOpenID authorIP authorSiteID checks unsure strictness rateLimit honeypot stored storedURL storedParentURL parentTitle = do
     config <- ask 
     let pubKey = mcPublicKey config

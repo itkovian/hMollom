@@ -13,6 +13,7 @@ module Network.Mollom.Captcha
 
 import Control.Monad.Error
 import Control.Monad.Reader
+import qualified Data.Aeson as A
 import Data.List (intercalate)
 import Network.HTTP.Base (RequestMethod(..))
 
@@ -30,10 +31,11 @@ instance Show Type where
   show Image = "image"
   show Audio = "audio"
 
-createCaptcha :: Type         -- ^ The type of captcha that should be created.
+createCaptcha :: A.FromJSON a
+              => Type         -- ^ The type of captcha that should be created.
               -> Maybe Bool   -- ^ Use SSL if True (only for paid subscriptions).
               -> Maybe String -- ^ Optional content ID to refer to.
-              -> Mollom MollomResponse
+              -> Mollom (MollomResponse a)
 createCaptcha t ssl captchId = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -48,7 +50,8 @@ createCaptcha t ssl captchId = do
 
 
 
-verifyCaptcha :: String         -- ^The captcha ID to be verified.
+verifyCaptcha :: A.FromJSON a
+              => String         -- ^The captcha ID to be verified.
               -> Maybe String   -- ^The name of the content author filling out the captcha.
               -> Maybe String   -- ^The website URL of the content author .
               -> Maybe String   -- ^The email address of the content author.
@@ -57,7 +60,7 @@ verifyCaptcha :: String         -- ^The captcha ID to be verified.
               -> Maybe String   -- ^Content author's unique local site user ID.
               -> Maybe Int      -- ^The time that must have passed before the same author can post again. Defaults to 15.
               -> Maybe String   -- ^Client-side honeypot value, if any.
-              -> Mollom MollomResponse
+              -> Mollom (MollomResponse a)
 verifyCaptcha captchId authorName authorURL authorEmail authorOpenIds authorIP authorSiteID rateLimit honeypot = do
     config <- ask
     let pubKey = mcPublicKey config

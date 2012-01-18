@@ -12,6 +12,7 @@ module Network.Mollom.Feedback
 
 import Control.Monad.Error
 import Control.Monad.Reader
+import qualified Data.Aeson as A
 import Network.HTTP.Base (RequestMethod(..))
 
 import Network.Mollom.MollomMonad
@@ -37,10 +38,11 @@ instance Show Reason where
   show Delete = "delete"
 
 
-sendFeedback :: Maybe String  -- ^Existing content ID
+sendFeedback :: A.FromJSON a
+                => Maybe String  -- ^Existing content ID
              -> Maybe String  -- ^Existing captcha ID
              -> Reason        -- ^Reason of the feedback
-             -> Mollom MollomResponse
+             -> Mollom (MollomResponse a)
 sendFeedback contentId captchaId reason = do
     case contentId `mplus` captchaId of
       Nothing -> undefined

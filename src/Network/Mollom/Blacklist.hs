@@ -7,6 +7,7 @@
 module Network.Mollom.Blacklist
   ( Reason(..)
   , Context(..)
+  , Match(..)
   , createBlacklist
   , updateBlacklist
   , deleteBlacklist
@@ -16,6 +17,7 @@ module Network.Mollom.Blacklist
 
 import Control.Monad.Error
 import Control.Monad.Reader
+import qualified Data.Aeson as A
 import Data.List(intercalate)
 import Data.Maybe(catMaybes)
 import Network.HTTP.Base (RequestMethod(..))
@@ -72,13 +74,14 @@ instance Show Match where
 
 
 -- | Create a blacklist entry for the given site.
-createBlacklist :: String        -- ^ The value or string to blacklist
+createBlacklist :: A.FromJSON a
+                => String        -- ^ The value or string to blacklist
                 -> Maybe Reason  -- ^ The reason for this blacklisting
                 -> Maybe Context -- ^ Where may the entry match
                 -> Maybe Match   -- ^ How precise should the match be
                 -> Maybe Bool    -- ^ Is the entry live or not
                 -> Maybe String  -- ^ Note
-                -> Mollom MollomResponse
+                -> Mollom (MollomResponse a)
 createBlacklist s reason context match status note = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -97,14 +100,15 @@ createBlacklist s reason context match status note = do
 
 -- | Update an existing blacklist entry. All arguments that are provided as Nothing
 --   default to keeping existing values.
-updateBlacklist :: String        -- ^ ID of the blacklisted entry to update
+updateBlacklist :: A.FromJSON a
+                => String        -- ^ ID of the blacklisted entry to update
                 -> Maybe String  -- ^ The blacklisted string or value.
                 -> Maybe Reason  -- ^ The reason for this blacklisting
                 -> Maybe Context -- ^ Where may the entry match
                 -> Maybe Match   -- ^ How precise should the match be
                 -> Maybe Bool    -- ^ Is the entry live or not
                 -> Maybe String  -- ^ Note
-                -> Mollom MollomResponse
+                -> Mollom (MollomResponse a)
 updateBlacklist entryId s reason context match status note = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -121,8 +125,9 @@ updateBlacklist entryId s reason context match status note = do
     mollomService pubKey privKey POST path kvs [] errors
 
 -- | Delete a blacklisted entry.
-deleteBlacklist :: String    -- ^ ID of the blacklisted entry to delete
-                -> Mollom MollomResponse
+deleteBlacklist :: A.FromJSON a
+                => String    -- ^ ID of the blacklisted entry to delete
+                -> Mollom (MollomResponse a)
 deleteBlacklist entryId = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -135,9 +140,10 @@ deleteBlacklist entryId = do
 -- | List the entries in the blacklist for a given set of credentials, 
 --   identified by the site public key.
 --   FIXME: the arguments determination is fugly.
-listBlacklist :: Maybe Int  -- ^ The offset from which to start listing entries. Defaults to 0 when Nothing is given as the argument.
+listBlacklist :: A.FromJSON a
+                => Maybe Int  -- ^ The offset from which to start listing entries. Defaults to 0 when Nothing is given as the argument.
               -> Maybe Int  -- ^ The number of entries that should be returned. Defaults to all.
-              -> Mollom MollomResponse
+              -> Mollom (MollomResponse a)
 listBlacklist offset count = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -153,8 +159,9 @@ listBlacklist offset count = do
 
 
 -- | Read the information that is stored for a given blacklist entry.
-readBlacklistEntry :: String  -- ^ ID of the blacklisted entry to read
-                   -> Mollom MollomResponse
+readBlacklistEntry :: A.FromJSON a
+                => String  -- ^ ID of the blacklisted entry to read
+                   -> Mollom (MollomResponse a)
 readBlacklistEntry entryId = do
     config <- ask
     let pubKey = mcPublicKey config

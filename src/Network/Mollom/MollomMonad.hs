@@ -8,10 +8,11 @@ module Network.Mollom.MollomMonad
   , runMollom
   ) where
 
-import Control.Monad.Reader
-import Control.Monad.State
-import Control.Monad.Error
-import Network.HTTP.Base (RequestMethod(..))
+import           Control.Monad.Reader
+import           Control.Monad.State
+import           Control.Monad.Error
+import qualified Data.Aeson as A
+import           Network.HTTP.Base (RequestMethod(..))
 
 import Network.Mollom.Internals
 import Network.Mollom.Types
@@ -30,14 +31,15 @@ newtype Mollom a = M { runM :: ErrorT MollomError
 wrapMollom :: ErrorT MollomError IO a -> Mollom a
 wrapMollom = M . ErrorT . liftIO . runErrorT
 
-mollomService :: String             -- ^ Public key
-              -> String             -- ^ Private key
-              -> RequestMethod      -- ^ The HTTP method used in this request.
-              -> String             -- ^ The path to the requested resource
-              -> [(String, Maybe String)] -- ^ Request parameters
-              -> [String]           -- ^ Expected returned values
+mollomService :: A.FromJSON a
+              => String                           -- ^ Public key
+              -> String                           -- ^ Private key
+              -> RequestMethod                    -- ^ The HTTP method used in this request.
+              -> String                           -- ^ The path to the requested resource
+              -> [(String, Maybe String)]         -- ^ Request parameters
+              -> [String]                         -- ^ Expected returned values
               -> [((Int, Int, Int), MollomError)] -- ^Possible error values
-              -> Mollom MollomResponse -- :: ErrorT (IO (Either MollomError (HTTPResponse String)))
+              -> Mollom (MollomResponse a)
 mollomService pubKey privKey method path params expected errors =
     wrapMollom $ service pubKey privKey method path params expected errors
 

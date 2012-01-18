@@ -16,6 +16,7 @@ module Network.Mollom.Whitelist
 
 import Control.Monad.Error
 import Control.Monad.Reader
+import qualified Data.Aeson as A
 import Data.List(intercalate)
 import Data.Maybe(catMaybes)
 import Network.HTTP.Base (RequestMethod(..))
@@ -66,11 +67,12 @@ instance Show Match where
 
 
 -- | Create a whitelist entry for the given site.
-createWhitelist :: String        -- ^ The value or string to whitelist
+createWhitelist :: A.FromJSON a
+                => String        -- ^ The value or string to whitelist
                 -> Maybe Context -- ^ Where may the entry match
                 -> Maybe Bool    -- ^ Is the entry live or not
                 -> Maybe String  -- ^ Note
-                -> Mollom MollomResponse
+                -> Mollom (MollomResponse a)
 createWhitelist s context status note = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -87,12 +89,13 @@ createWhitelist s context status note = do
 
 -- | Update an existing whitelist entry. All arguments that are provided as Nothing
 --   default to keeping existing values.
-updateWhitelist :: String        -- ^ ID of the whitelisted entry to update
+updateWhitelist :: A.FromJSON a
+                => String        -- ^ ID of the whitelisted entry to update
                 -> Maybe String  -- ^ The whitelisted string or value.
                 -> Maybe Context -- ^ Where may the entry match
                 -> Maybe Bool    -- ^ Is the entry live or not
                 -> Maybe String  -- ^ Note
-                -> Mollom MollomResponse
+                -> Mollom (MollomResponse a)
 updateWhitelist entryId s context status note = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -107,8 +110,9 @@ updateWhitelist entryId s context status note = do
     mollomService pubKey privKey POST path kvs [] errors
 
 -- | Delete a whitelisted entry.
-deleteWhitelist :: String    -- ^ ID of the whitelisted entry to delete
-                -> Mollom MollomResponse
+deleteWhitelist :: A.FromJSON a
+                => String    -- ^ ID of the whitelisted entry to delete
+                -> Mollom (MollomResponse a)
 deleteWhitelist entryId = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -121,9 +125,10 @@ deleteWhitelist entryId = do
 -- | List the entries in the whitelist for a given set of credentials, 
 --   identified by the site public key.
 --   FIXME: the arguments determination is fugly.
-listWhitelist :: Maybe Int  -- ^ The offset from which to start listing entries. Defaults to 0 when Nothing is given as the argument.
+listWhitelist :: A.FromJSON a
+                => Maybe Int  -- ^ The offset from which to start listing entries. Defaults to 0 when Nothing is given as the argument.
               -> Maybe Int  -- ^ The number of entries that should be returned. Defaults to all.
-              -> Mollom MollomResponse
+              -> Mollom (MollomResponse a)
 listWhitelist offset count = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -139,8 +144,9 @@ listWhitelist offset count = do
 
 
 -- | Read the information that is stored for a given whitelist entry.
-readWhitelist :: String  -- ^ ID of the whitelisted entry to read
-              -> Mollom MollomResponse
+readWhitelist :: A.FromJSON a
+                => String  -- ^ ID of the whitelisted entry to read
+              -> Mollom (MollomResponse a)
 readWhitelist entryId = do
     config <- ask
     let pubKey = mcPublicKey config

@@ -7,21 +7,21 @@
 
 module Network.Mollom.Internals 
   ( mollomApiVersion
-  , mollomTimeFormat
   , MollomConfiguration(..)
   , MollomError(..)
-  --, MollomValue(..)
   , MollomResponse(..)
   , service
   ) where
 
 import           Control.Arrow (second)
 import           Control.Monad.Error
+import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy.Char8 as BS
 import           Data.List (intercalate, lookup, sort)
 import           Data.Maybe(fromJust, isJust)
 import           Network.HTTP (getRequest, postRequestWithBody, simpleHTTP)
 import           Network.HTTP.Base (HTTPResponse, RequestMethod(..), Response(..), ResponseCode, urlEncode)
-import           Network.HTTP.Headers (HeaderName (HdrContentType, HdrAccept), HasHeaders, replaceHeader)
+import           Network.HTTP.Headers (HeaderName (HdrContentType, HdrAccept), replaceHeader)
 import           Network.HTTP.Stream (ConnError(..), Result)
 
 import Network.Mollom.OAuth
@@ -30,13 +30,8 @@ import Network.Mollom.Types
 mollomServer :: String
 mollomServer = "http://dev.mollom.com/v1"
 
--- FIXME: This should be specified in some configuration file
--- or use the system locale
-mollomTimeFormat = "%Y-%m-%dT%H:%M:%S.000+0200"
-
 catSecondMaybes :: [(k, Maybe v)] -> [(k, v)]
 catSecondMaybes = map (second fromJust) . filter (isJust . snd)
-
 
 
 -- | Encode the parameters after sorting them.
@@ -52,7 +47,7 @@ buildEncodedQuery ps =
 --   If there is a connection error, we immediately return the appropriate
 --   error. Otherwise, in case of an error, we check the code and return
 --   the appropriate instance.
-processResponse :: [(ResponseCode, MollomError)] -> Result (HTTPResponse String) -> Either MollomError MollomResponse
+processResponse :: A.FromJSON a => [(ResponseCode, MollomError)] -> Result (HTTPResponse String) -> Either MollomError (MollomResponse a)
 processResponse errors result =
     case result of 
         Left ce -> Left (ConnectionError ce)
@@ -60,22 +55,26 @@ processResponse errors result =
                        message = rspReason r
                    in case lookup code errors of
                           Just e  -> Left (addMessage e message)
-                          Nothing -> Right MollomResponse { code = rspCode r
-                                        , message = rspReason r
-                                        , response = rspBody r
-                                        }
+                          Nothing -> let response = A.decode' . BS.pack $ rspBody r
+                                     in case response of 
+                                            Nothing -> Left JSONParseError
+                                            Just r' -> Right MollomResponse { code = code
+                                                                            , message = message
+                                                                            , response = r'
+                                                                            }
 
 -- | The service function is the common entrypoint to use the Mollom service. This
 --   is where we actually send the data to Mollom.
 --   FIXME: implement the maximal number of retries
-service :: String                               -- ^Public key
+service :: A.FromJSON a
+        => String                               -- ^Public key
         -> String                               -- ^Private key
         -> RequestMethod                        -- ^The HTTP method used in this request.
         -> String                               -- ^The path to the requested resource
         -> [(String, Maybe String)]             -- ^Request parameters
         -> [String]                             -- ^Expected returned values
         -> [((Int, Int, Int), MollomError)]     -- ^Possible error values
-        -> ErrorT MollomError IO MollomResponse -- :: ErrorT (IO (Either MollomError (HTTPResponse String)))
+        -> ErrorT MollomError IO (MollomResponse a)-- :: ErrorT (IO (Either MollomError (HTTPResponse String)))
 service publicKey privateKey method path params expected errors = do
     let params' = catSecondMaybes params
         oauthHVs = oauthHeaderValues publicKey OAuthHmacSha1
