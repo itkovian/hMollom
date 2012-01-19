@@ -23,31 +23,6 @@ import Network.HTTP.Base (RequestMethod(..))
 import Network.Mollom.MollomMonad
 import Network.Mollom.Types
 
-{-
-
-readSite:
-<response>
-  <code>200</code>
-  <message>Error message</message>
-  <site>
-    <id>siteId</id>
-    <publicKey>publicKey</publicKey>
-    <privateKey>privateKey</privateKey>
-    <url>example.com</url>
-    <email>mail@example.com</email>
-    <languages>
-      <language>en</language>
-    </languages>
-    <subscriptionType></subscriptionType>
-    <platformName>Drupal</platformName>
-    <platformVersion>7.2</platformVersion>
-    <clientName>Mollom</clientName>
-    <clientVersion>7.x-1.0</clientVersion>
-  </site>
-</response>
-
--}
-
 type SiteLanguage = String
 
 data SiteResponse = 
@@ -87,8 +62,6 @@ instance A.FromJSON [SiteResponse] where
       o <- A.parseJSON j
       ls <- o A..: "list"
       mapM A.parseJSON ls 
-
-
 
 
 -- | Request the information Mollom has about a specific site
