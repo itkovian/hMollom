@@ -110,7 +110,7 @@ addMessage (Message _) s = Message s
 data (A.FromJSON a) => MollomResponse a = MollomResponse 
                     { code :: ResponseCode
                     , message :: String
-                    , response :: a  -- [(String, MollomValue)]
+                    , response :: a
                     } deriving (Eq, Show)
 
 data MollomValue = MInt Int
