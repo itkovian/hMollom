@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {- 
  - (C) 2012, Andy Georges
  -
@@ -10,12 +12,12 @@ module Network.Mollom.Site
   , listSites
   ) where
 
+import Control.Applicative ((<*>), (<$>))
 import Control.Monad.Error
 import Control.Monad.Reader
 import qualified Data.Aeson as A
 import Data.List(intercalate)
 import Data.Maybe(catMaybes)
---import           Control.Monad.State
 import Network.HTTP.Base (RequestMethod(..))
 
 import Network.Mollom.MollomMonad
@@ -61,14 +63,36 @@ data SiteResponse =
                   , siteClientName :: String
                   , siteClientVersion :: String
                   }
+                  deriving (Eq, Show)
 
 instance A.FromJSON SiteResponse where
-    parseJSON = undefined
+  parseJSON j = do
+      o <- A.parseJSON j
+      s <- o A..: "site"
+      SiteResponse <$>
+        s A..: "siteId"     <*>
+        s A..: "publicKey"  <*>
+        s A..: "privateKey" <*>
+        s A..: "url"        <*>
+        s A..: "email"      <*>
+        s A..: "languages"  <*>
+        s A..: "subscription" <*>
+        s A..: "platforName" <*>
+        s A..: "platformVersion" <*>
+        s A..: "clientName" <*>
+        s A..: "clientVersion" 
+
+instance A.FromJSON [SiteResponse] where
+  parseJSON j = do
+      o <- A.parseJSON j
+      ls <- o A..: "list"
+      mapM A.parseJSON ls 
+
+
 
 
 -- | Request the information Mollom has about a specific site
-readSite :: A.FromJSON a
-                => Mollom (MollomResponse a) -- ^ The Mollom monad in which the request is made
+readSite :: Mollom (MollomResponse SiteResponse) -- ^ The Mollom monad in which the request is made
 readSite = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -92,10 +116,10 @@ deleteSite = do
 
 -- | List all sites that can be accessed with the given authentication
 --   FIXME: need to incorporate the offset and count parameters
-listSites :: A.FromJSON a
-                => Maybe Int -- ^ The offset from which to start listing sites. Defaults to 0 when Nothing is given as the argument.
+listSites :: 
+          Maybe Int -- ^ The offset from which to start listing sites. Defaults to 0 when Nothing is given as the argument.
           -> Maybe Int -- ^ The number of sites that should be returned. Defaults to all.
-          -> Mollom (MollomResponse a)
+          -> Mollom (MollomResponse [SiteResponse])
 listSites offset count = do
     config <- ask
     let pubKey = mcPublicKey config
@@ -108,5 +132,4 @@ listSites offset count = do
         path = "site" ++ arguments
         errors = generalErrors
     mollomService pubKey privKey GET path [] [] errors
-
 

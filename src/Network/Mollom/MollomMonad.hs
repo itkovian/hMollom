@@ -26,10 +26,16 @@ type MollomState = Maybe ContentID
 newtype Mollom a = M { runM :: ErrorT MollomError 
                                       (StateT MollomState
                                               (ReaderT MollomConfiguration IO)) a 
-                     } deriving (Monad, MonadIO, MonadReader MollomConfiguration, MonadState (Maybe ContentID))
+                     } deriving (Monad, MonadIO, MonadReader MollomConfiguration, MonadState (Maybe ContentID), MonadError MollomError)
 
 wrapMollom :: ErrorT MollomError IO a -> Mollom a
 wrapMollom = M . ErrorT . liftIO . runErrorT
+
+pJSON :: A.FromJSON b => MollomResponse A.Value -> Mollom (MollomResponse b)
+pJSON mr =
+    case A.fromJSON (response mr) of
+      A.Success r' -> return $ mr { response = r' }
+      _            -> throwError JSONParseError
 
 mollomService :: A.FromJSON a
               => String                           -- ^ Public key
@@ -41,7 +47,7 @@ mollomService :: A.FromJSON a
               -> [((Int, Int, Int), MollomError)] -- ^Possible error values
               -> Mollom (MollomResponse a)
 mollomService pubKey privKey method path params expected errors =
-    wrapMollom $ service pubKey privKey method path params expected errors
+    (wrapMollom $ service pubKey privKey method path params expected errors) >>= pJSON
 
 runMollom :: Mollom a -> MollomConfiguration -> MollomState -> IO (Either MollomError (Maybe ContentID, a))
 runMollom m config s = do
