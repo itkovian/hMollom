@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-
  - (C) 2012, Andy Georges
  -
@@ -11,6 +12,7 @@ module Network.Mollom.Content
   , checkContent
   ) where
 
+import Control.Applicative
 import Control.Monad.Error
 import Control.Monad.Reader
 import qualified Data.Aeson as A
@@ -41,30 +43,97 @@ instance Show Strictness where
   show Relaxed = "relaxed"
 
 
+-- | Data type representing the language that was detected by 
+--   the Mollom service.
+data ContentLanguage =
+     ContentLanguage { languageCode  :: String
+                     , languageScore :: Double
+                     }
+
+instance A.FromJSON ContentLanguage where
+    parseJSON (A.Object o) = ContentLanguage <$>
+                              o A..: "languageCode" <*>
+                              o A..: "languageScore"
+
+-- | Data type representing the classification of the content
+--   by the Mollom service.
+data SpamClassification = SpamClass | HamClass | UnsureClass deriving (Eq, Show)
+
+instance A.FromJSON SpamClassification where
+    parseJSON (A.String s) = return $ case s of
+                              "spam"   -> SpamClass
+                              "ham"    -> HamClass
+                              "unsure" -> UnsureClass
+    parseJSON _ = mzero
+
+-- | Data type representing a response in the content API.
+data ContentResponse =
+     ContentResponse { contentId                 :: String
+                     , contentSpamScore          :: Double
+                     , contentSpamClassification :: SpamClassification
+                     , contentProfanityScore     :: Double
+                     , contentQualityScore       :: Double
+                     , contentSentimentScore     :: Double
+                     , contentReason             :: String
+                     , contentLanguages          :: [ContentLanguage]
+                     , contentPostTitle          :: String
+                     , contentPostBody           :: String
+                     , contentAuthorName         :: String
+                     , contentAuthorUrl          :: String
+                     , contentAuthorMail         :: String
+                     , contentAuthorIP           :: String
+                     , contentAuthorId           :: String
+                     , contentAuthorOpenId       :: [String]
+                     }
+
+
+instance A.FromJSON ContentResponse where
+    parseJSON j = do
+        o <- A.parseJSON j
+        s <- o A..: "content"
+        ContentResponse <$>
+          s A..: "contentId" <*>
+          s A..: "spamScore" <*>
+          s A..: "spamClassification" <*>
+          s A..: "profanityScore" <*>
+          s A..: "qualityScore" <*>
+          s A..: "sentimentScore" <*>
+          s A..: "reason" <*>
+          s A..: "languages" <*>
+          s A..: "postTitle" <*>
+          s A..: "postBody" <*>
+          s A..: "authorName" <*>
+          s A..: "authorUrl" <*>
+          s A..: "authorMail" <*>
+          s A..: "authorIp" <*>
+          s A..: "authorId" <*>
+          s A..: "authorOpenId"
 
 -- | Asks Mollom whether the specified message is legitimate.
 --   FIXME: contentID should be taken from the Mollom state
-checkContent :: A.FromJSON a
-                => Maybe String  -- ^Existing content ID.
-             -> Maybe String  -- ^Title of submitted post.
-             -> Maybe String  -- ^Body of submitted post.
-             -> Maybe String  -- ^Content author's name.
-             -> Maybe String  -- ^Content author's URL or website.
-             -> Maybe String  -- ^Content author's email address.
-             -> Maybe String  -- ^Content author's openID.
-             -> Maybe String  -- ^Content author's current IP.
-             -> Maybe String  -- ^Content author's unique local site user ID.
-             -> Maybe [Check] -- ^The check(s) to perform. If Nothing or Just None,
-                              --  this will default to Spam when the existing content ID is Nothing.
-             -> Maybe Bool    -- ^ Do we want to allow unsure results, leading to a CAPTCHA or not.
-             -> Maybe Strictness -- ^ How strict should Mollom be when checking this content?
-             -> Maybe Int     -- ^ Rate limit imposing a bound on the time between submitted posts from the same author.
-             -> Maybe String  -- ^ Value of the honeypot form-element, if any.
-             -> Maybe Bool    -- ^ Was the content stored on the client-side? Should be 0 during validation of a form, 1 after a succesfull submission.
-             -> Maybe String  -- ^ Absolute URL for the stored content.
-             -> Maybe String  -- ^ Absolute URL to the content's parent context, e.g., the article of forum thread a comment is placed on.
-             -> Maybe String  -- ^ Title of said parental context.
-             -> Mollom (MollomResponse a) -- ^The monad in which the function is executing.
+checkContent :: Maybe String     -- ^Existing content ID.
+             -> Maybe String     -- ^Title of submitted post.
+             -> Maybe String     -- ^Body of submitted post.
+             -> Maybe String     -- ^Content author's name.
+             -> Maybe String     -- ^Content author's URL or website.
+             -> Maybe String     -- ^Content author's email address.
+             -> Maybe String     -- ^Content author's openID.
+             -> Maybe String     -- ^Content author's current IP.
+             -> Maybe String     -- ^Content author's unique local site user ID.
+             -> Maybe [Check]    -- ^The check(s) to perform. If Nothing or Just None,
+                                 --  this will default to Spam when the existing content ID is Nothing.
+             -> Maybe Bool       -- ^Do we want to allow unsure results, leading to a CAPTCHA or not.
+             -> Maybe Strictness -- ^How strict should Mollom be when checking this content?
+             -> Maybe Int        -- ^Rate limit imposing a bound on the time between submitted posts from the same author.
+             -> Maybe String     -- ^Value of the honeypot form-element, if any.
+             -> Maybe Bool       -- ^Was the content stored on the client-side? 
+                                 --  Should be False during validation of a form, 
+                                 --  True after a succesfull submission.
+             -> Maybe String     -- ^Absolute URL for the stored content.
+             -> Maybe String     -- ^Absolute URL to the content's parent context, e.g., 
+                                 --  the article of forum thread a comment is placed on.
+             -> Maybe String     -- ^Title of said parental context.
+             -> Mollom (MollomResponse ContentResponse) -- ^The monad in which the function is executing.
 checkContent contentID title body authorName authorURL authorEmail authorOpenID authorIP authorSiteID checks unsure strictness rateLimit honeypot stored storedURL storedParentURL parentTitle = do
     config <- ask 
     let pubKey = mcPublicKey config
