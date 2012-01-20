@@ -9,11 +9,12 @@
 module Network.Mollom.Whitelist
   ( Reason(..)
   , Context(..)
+  , WhitelistResponse(..)
   , createWhitelist
   , updateWhitelist
   , deleteWhitelist
-  --, listWhitelist
-  --, readWhitelistEntry
+  , listWhitelist
+  , readWhitelistEntry
   ) where
 
 import Control.Applicative
@@ -202,9 +203,9 @@ listWhitelist offset count = do
 
 
 -- | Read the information that is stored for a given whitelist entry.
-readWhitelist :: String  -- ^ ID of the whitelisted entry to read
+readWhitelistEntry :: String  -- ^ ID of the whitelisted entry to read
               -> Mollom (MollomResponse WhitelistResponse)
-readWhitelist entryId = do
+readWhitelistEntry entryId = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
