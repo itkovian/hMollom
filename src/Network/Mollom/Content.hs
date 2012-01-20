@@ -77,7 +77,7 @@ data ContentResponse =
                      , contentProfanityScore     :: Maybe Double
                      , contentQualityScore       :: Maybe Double
                      , contentSentimentScore     :: Maybe Double
-                     , contentReason             :: String
+                     , contentReason             :: Maybe String
                      , contentLanguages          :: [ContentLanguage]
                      , contentPostTitle          :: String
                      , contentPostBody           :: String
@@ -101,7 +101,7 @@ instance A.FromJSON ContentResponse where
           s A..:? "profanityScore" <*>
           s A..:? "qualityScore" <*>
           s A..:? "sentimentScore" <*>
-          s A..: "reason" <*>
+          s A..:? "reason" <*>
           s A..: "languages" <*>
           s A..: "postTitle" <*>
           s A..: "postBody" <*>
