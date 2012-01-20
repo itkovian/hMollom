@@ -72,11 +72,11 @@ instance A.FromJSON SpamClassification where
 -- | Data type representing a response in the content API.
 data ContentResponse =
      ContentResponse { contentId                 :: String
-                     , contentSpamScore          :: Double
-                     , contentSpamClassification :: SpamClassification
-                     , contentProfanityScore     :: Double
-                     , contentQualityScore       :: Double
-                     , contentSentimentScore     :: Double
+                     , contentSpamScore          :: Maybe Double
+                     , contentSpamClassification :: Maybe SpamClassification
+                     , contentProfanityScore     :: Maybe Double
+                     , contentQualityScore       :: Maybe Double
+                     , contentSentimentScore     :: Maybe Double
                      , contentReason             :: String
                      , contentLanguages          :: [ContentLanguage]
                      , contentPostTitle          :: String
@@ -96,11 +96,11 @@ instance A.FromJSON ContentResponse where
         s <- o A..: "content"
         ContentResponse <$>
           s A..: "contentId" <*>
-          s A..: "spamScore" <*>
-          s A..: "spamClassification" <*>
-          s A..: "profanityScore" <*>
-          s A..: "qualityScore" <*>
-          s A..: "sentimentScore" <*>
+          s A..:? "spamScore" <*>
+          s A..:? "spamClassification" <*>
+          s A..:? "profanityScore" <*>
+          s A..:? "qualityScore" <*>
+          s A..:? "sentimentScore" <*>
           s A..: "reason" <*>
           s A..: "languages" <*>
           s A..: "postTitle" <*>
@@ -111,6 +111,7 @@ instance A.FromJSON ContentResponse where
           s A..: "authorIp" <*>
           s A..: "authorId" <*>
           s A..: "authorOpenId"
+    parseJSON _ = mzero
 
 -- | Asks Mollom whether the specified message is legitimate.
 --   FIXME: contentID should be taken from the Mollom state
