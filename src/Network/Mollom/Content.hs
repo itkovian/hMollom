@@ -8,6 +8,9 @@
 
 module Network.Mollom.Content
   ( Check(..)
+  , ContentLanguage(..)
+  , ContentResponse(..)
+  , SpamClassification(..)
   , Strictness(..)
   , checkContent
   ) where
