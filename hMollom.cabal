@@ -28,7 +28,6 @@ library
         attoparsec >= 0.10,
         base >= 3 && < 5, 
         ghc-prim,
-        haxr >= 3000.5,
         old-locale >= 1,
         time >= 1.1.4,
         Crypto >= 4.2.0,
@@ -39,7 +38,17 @@ library
         pureMD5 >= 2.1.0.2,
         old-time,
         random 
-    exposed-modules:   Network.Mollom
+    exposed-modules:
+        Network.Mollom
+      , Network.Mollom.Blacklist
+      , Network.Mollom.Captcha
+      , Network.Mollom.Content
+      , Network.Mollom.Feedback
+      , Network.Mollom.MollomMonad
+      , Network.Mollom.Site
+      , Network.Mollom.Types
+      , Network.Mollom.Whitelist
+
     ghc-options:       -Wall
     hs-source-dirs:      src
 
