@@ -18,6 +18,7 @@ module Network.Mollom.Content
 import Control.Applicative
 import Control.Monad.Error
 import Control.Monad.Reader
+import Control.Monad.State
 import qualified Data.Aeson as A
 import Data.List (intercalate)
 import Network.HTTP.Base (RequestMethod(..))
@@ -115,8 +116,7 @@ instance A.FromJSON ContentResponse where
 
 -- | Asks Mollom whether the specified message is legitimate.
 --   FIXME: contentID should be taken from the Mollom state
-checkContent :: Maybe String     -- ^Existing content ID.
-             -> Maybe String     -- ^Title of submitted post.
+checkContent :: Maybe String     -- ^Title of submitted post.
              -> Maybe String     -- ^Body of submitted post.
              -> Maybe String     -- ^Content author's name.
              -> Maybe String     -- ^Content author's URL or website.
@@ -138,8 +138,9 @@ checkContent :: Maybe String     -- ^Existing content ID.
                                  --  the article of forum thread a comment is placed on.
              -> Maybe String     -- ^Title of said parental context.
              -> Mollom (MollomResponse ContentResponse) -- ^The monad in which the function is executing.
-checkContent contentID title body authorName authorURL authorEmail authorOpenID authorIP authorSiteID checks unsure strictness rateLimit honeypot stored storedURL storedParentURL parentTitle = do
+checkContent title body authorName authorURL authorEmail authorOpenID authorIP authorSiteID checks unsure strictness rateLimit honeypot stored storedURL storedParentURL parentTitle = do
     config <- ask 
+    contentID <- get
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
         kvs = [ ("postTitle", title)
@@ -164,7 +165,10 @@ checkContent contentID title body authorName authorURL authorEmail authorOpenID 
                   Just cid -> "content/" ++ cid
                   Nothing -> "content"
         errors = generalErrors
-    mollomService pubKey privKey POST path kvs [] errors
+    ms <- mollomService pubKey privKey POST path kvs [] errors
+    let contentID' = contentId . response $ ms
+    put $ Just contentID'
+    return ms
 
 
 
