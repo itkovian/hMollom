@@ -21,10 +21,8 @@ module Network.Mollom.Types
 
 import           Control.Monad.Error
 import qualified Data.Aeson as A
-import           Network.HTTP.Base (Response(..), ResponseCode)
-import           Network.HTTP.Stream (ConnError(..), Result)
-import           Network.XmlRpc.Client
-import           Network.XmlRpc.Internals 
+import           Network.HTTP.Base (ResponseCode)
+import           Network.HTTP.Stream (ConnError(..))
 
 mollomApiVersion :: String
 mollomApiVersion = "1.0"
@@ -113,25 +111,6 @@ data (A.FromJSON a) => MollomResponse a = MollomResponse
                     , response :: a
                     } deriving (Eq, Show)
 
-data MollomValue = MInt Int
-                 | MBool Bool
-                 | MDouble Double
-                 | MString String deriving (Eq, Ord, Show)
 
-instance XmlRpcType MollomValue where
-  toValue (MInt i) = toValue i
-  toValue (MBool b) = toValue b
-  toValue (MDouble d) = toValue d
-  toValue (MString s) = toValue s
-
-  fromValue (ValueInt i) = maybeToM "" (Just (MInt i))
-  fromValue (ValueBool b) = maybeToM "" (Just (MBool b)) 
-  fromValue (ValueDouble d) = maybeToM "" (Just (MDouble d))
-  fromValue (ValueString s) = maybeToM "" (Just (MString s))
-
-  getType (MInt _) = TInt
-  getType (MBool _) = TBool
-  getType (MDouble _) = TDouble
-  getType (MString _) = TString
 
 
