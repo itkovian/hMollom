@@ -7,7 +7,8 @@
  -}
 
 module Network.Mollom.Site
-  ( readSite
+  ( SiteResponse(..)
+  , readSite
   , deleteSite
   , listSites
   ) where
