@@ -1,62 +1,99 @@
--- |Internal data structures and functions to the Mollom service
+{-# LANGUAGE OverloadedStrings #-}
+{- 
+ - (C) 2012, Andy Georges
+ -
+ - This module provides internal functions to allow using the Mollom service
+ -}
+
 module Network.Mollom.Internals 
   ( mollomApiVersion
-  , mollomTimeFormat
   , MollomConfiguration(..)
   , MollomError(..)
-  , MollomValue(..)
-  , MollomServerList(..)
+  , MollomResponse(..)
+  , service
   ) where
 
-import Control.Monad.Error
-import Network.XmlRpc.Client
-import Network.XmlRpc.Internals 
+import           Control.Arrow (second)
+import           Control.Monad.Error
+import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy.Char8 as BS
+import           Data.List (intercalate, lookup, sort)
+import           Data.Maybe(fromJust, isJust)
+import           Network.HTTP (getRequest, postRequestWithBody, simpleHTTP)
+import           Network.HTTP.Base (HTTPResponse, RequestMethod(..), Response(..), ResponseCode, urlEncode)
+import           Network.HTTP.Headers (HeaderName (HdrContentType, HdrAccept), replaceHeader)
+import           Network.HTTP.Stream (ConnError(..), Result)
 
-mollomApiVersion :: String
-mollomApiVersion = "1.0"
+import Network.Mollom.OAuth
+import Network.Mollom.Types
 
--- FIXME: This should be specified in some configuration file
--- or use the system locale
-mollomTimeFormat = "%Y-%m-%dT%H:%M:%S.000+0200"
+mollomServer :: String
+mollomServer = "http://dev.mollom.com/v1"
 
-data MollomConfiguration = MollomConfiguration 
-  { mcPublicKey :: String
-  , mcPrivateKey :: String
-  , mcAPIVersion :: String
-  } deriving (Eq, Ord, Show)
-
-data MollomServerList = UninitialisedServerList | MollomServerList [String] deriving (Eq, Ord, Show)
-
-data MollomError = MollomInternalError 
-                 | MollomRefresh
-                 | MollomServerBusy 
-                 | MollomNoMoreServers
-                 | HMollomError String deriving (Eq, Ord, Show)
-
-instance Error MollomError where 
-  noMsg = HMollomError "Unknown Error"
-  strMsg str = HMollomError str
+catSecondMaybes :: [(k, Maybe v)] -> [(k, v)]
+catSecondMaybes = map (second fromJust) . filter (isJust . snd)
 
 
-data MollomValue = MInt Int
-                 | MBool Bool
-                 | MDouble Double
-                 | MString String deriving (Eq, Ord, Show)
+-- | Encode the parameters after sorting them.
+buildEncodedQuery :: [(String, String)] -- ^ The name-value pairs for the query
+                  -> String
+buildEncodedQuery ps = 
+    let sps = sort ps
+    in intercalate "&" $ map (\(n, v) -> intercalate "=" [urlEncode n, urlEncode v]) sps
 
-instance XmlRpcType MollomValue where
-  toValue (MInt i) = toValue i
-  toValue (MBool b) = toValue b
-  toValue (MDouble d) = toValue d
-  toValue (MString s) = toValue s
 
-  fromValue (ValueInt i) = maybeToM "" (Just (MInt i))
-  fromValue (ValueBool b) = maybeToM "" (Just (MBool b)) 
-  fromValue (ValueDouble d) = maybeToM "" (Just (MDouble d))
-  fromValue (ValueString s) = maybeToM "" (Just (MString s))
-  
-  getType (MInt _) = TInt
-  getType (MBool _) = TBool
-  getType (MDouble _) = TDouble
-  getType (MString _) = TString
+
+-- | Process the response from the Mollom server, checking the return code.
+--   If there is a connection error, we immediately return the appropriate
+--   error. Otherwise, in case of an error, we check the code and return
+--   the appropriate instance.
+processResponse :: A.FromJSON a => [(ResponseCode, MollomError)] -> Result (HTTPResponse String) -> Either MollomError (MollomResponse a)
+processResponse errors result =
+    case result of 
+        Left ce -> Left (ConnectionError ce)
+        Right r -> let code = rspCode r
+                       message = rspReason r
+                   in case lookup code errors of
+                          Just e  -> Left (addMessage e message)
+                          Nothing -> let response = A.decode' . BS.pack $ rspBody r
+                                     in case response of 
+                                            Nothing -> Left JSONParseError
+                                            Just r' -> Right MollomResponse { code = code
+                                                                            , message = message
+                                                                            , response = r'
+                                                                            }
+
+-- | The service function is the common entrypoint to use the Mollom service. This
+--   is where we actually send the data to Mollom.
+--   FIXME: implement the maximal number of retries
+service :: A.FromJSON a
+        => String                               -- ^Public key
+        -> String                               -- ^Private key
+        -> RequestMethod                        -- ^The HTTP method used in this request.
+        -> String                               -- ^The path to the requested resource
+        -> [(String, Maybe String)]             -- ^Request parameters
+        -> [String]                             -- ^Expected returned values
+        -> [((Int, Int, Int), MollomError)]     -- ^Possible error values
+        -> ErrorT MollomError IO (MollomResponse a)-- :: ErrorT (IO (Either MollomError (HTTPResponse String)))
+service publicKey privateKey method path params expected errors = do
+    let params' = catSecondMaybes params
+        oauthHVs = oauthHeaderValues publicKey OAuthHmacSha1
+        oauthSig = oauthSignature OAuthHmacSha1 privateKey method mollomServer path 
+                                  (buildEncodedQuery $ params' ++ oauthHVs)
+        oauthH   = oauthHeader (("oauth_signature", oauthSig) : oauthHVs)
+        contentH = replaceHeader HdrContentType "application/x-www-form-urlencoded"
+        acceptH  = replaceHeader HdrAccept "application/json;q=0.8"
+    liftIO $ putStrLn $ "URI = " ++ (mollomServer ++ "/" ++ path)
+    result <- liftIO $ liftM (processResponse errors) $ simpleHTTP (oauthH . contentH . acceptH 
+                                                          $ case method of
+                                                               POST -> let body = buildEncodedQuery params'
+                                                                       in postRequestWithBody (mollomServer ++ "/" ++ path) 
+                                                                          "application/x-www-form-urlencoded" 
+                                                                          body
+                                                               GET -> getRequest (mollomServer ++ "/" ++ path)
+                                                               _ -> undefined
+                                                          )
+    ErrorT { runErrorT = return result }
+
 
 
