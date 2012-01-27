@@ -1,48 +1,59 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- |Module that implements the Mollom monad stack
--- We wrap the configuration and the serverlist
--- in a Reader and a State, respectively
+-- We wrap the configuration in a Reader
 module Network.Mollom.MollomMonad 
-  ( MollomMonad
---  , createMollomMonad
---  , runMollomMonad
+  ( Mollom
   , MollomState
---  , runMollomState
+  , mollomService
+  , runMollom
   ) where
 
-
-import Control.Monad.Reader
-import Control.Monad.Writer
-import Control.Monad.State
-import Control.Monad.Error
-import Data.Monoid
+import           Control.Monad.Reader
+import           Control.Monad.State
+import           Control.Monad.Error
+import qualified Data.Aeson as A
+import           Network.HTTP.Base (RequestMethod(..))
 
 import Network.Mollom.Internals
+import Network.Mollom.Types
 
-type SessionID = String
-type Server = String
+type ContentID = String
+type MollomState = Maybe ContentID
 
+-- | The MollomMonad type is a monad stack that can retain the content ID in its
+--   state (Content, Captcha and Feedback APIs). We also need to have a configuration
+--   that's towed along with the public and private keys.
+newtype Mollom a = M { runM :: ErrorT MollomError 
+                                      (StateT MollomState
+                                              (ReaderT MollomConfiguration IO)) a 
+                     } deriving (Monad, MonadIO, MonadReader MollomConfiguration, MonadState (Maybe ContentID), MonadError MollomError)
 
+wrapMollom :: ErrorT MollomError IO a -> Mollom a
+wrapMollom = M . ErrorT . liftIO . runErrorT
 
-type MollomState = ReaderT MollomConfiguration (StateT MollomServerList IO)
-type MollomMonad = ErrorT MollomError (StateT (Maybe SessionID) MollomState)
+pJSON :: A.FromJSON b => MollomResponse A.Value -> Mollom (MollomResponse b)
+pJSON mr =
+    case A.fromJSON (response mr) of
+      A.Success r' -> return $ mr { response = r' }
+      _            -> throwError JSONParseError
 
+mollomService :: A.FromJSON a
+              => String                           -- ^ Public key
+              -> String                           -- ^ Private key
+              -> RequestMethod                    -- ^ The HTTP method used in this request.
+              -> String                           -- ^ The path to the requested resource
+              -> [(String, Maybe String)]         -- ^ Request parameters
+              -> [String]                         -- ^ Expected returned values
+              -> [((Int, Int, Int), MollomError)] -- ^Possible error values
+              -> Mollom (MollomResponse a)
+mollomService pubKey privKey method path params expected errors =
+    (wrapMollom $ service pubKey privKey method path params expected errors) >>= pJSON
 
-
-{-
-newtype Eq a => MollomState a = MollomState {
-    runMollomState :: ReaderT MollomConfiguration (StateT MollomServerList IO) a
-  } deriving (Monad, MonadIO, MonadReader MollomConfiguration, MonadState MollomServerList)
-  -}
-
-{-
-newtype Eq a => MollomMonad a = MollomMonad { 
-    runMollomMonad :: ErrorT String (StateT SessionID MollomState) a
-  } deriving (Monad, MonadIO, MonadState SessionID)
-
--}
-
--- createMollomMonad :: MollomConfiguration -> MollomMonad ()
--- createMollomMonad configuration = MollomMonad $ 
+runMollom :: Mollom a -> MollomConfiguration -> MollomState -> IO (Either MollomError (Maybe ContentID, a))
+runMollom m config s = do
+    v <- runReaderT (runStateT (runErrorT $ runM m) s) config
+    return $ case v of 
+                 (Left err, _) -> Left err
+                 (Right r, cid) -> Right (cid, r)
 
 
