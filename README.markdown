@@ -5,6 +5,11 @@ Mollom anti-spam service. For more information about Mollom, see http://mollom.c
 
 ## Release versions
 
+- 0.4.0  Minor fixes to the site API paths used. 
+         Added the createSite API call, extending the service with a non-authorising
+         version, to be used only when registering a site with Mollom.
+         Builds on ghc-7.4.1.
+         Depends on a bugfix to Crypto-4.2.4, see also patches.
 - 0.3.1  Minor fix to the exported functions and data types from the Network.Mollom
          module. If you need anything besides runMollom, you should import the other
          modules in a qualified form, since severel data types have been given the
