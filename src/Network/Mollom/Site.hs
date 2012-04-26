@@ -65,13 +65,20 @@ instance A.FromJSON [SiteResponse] where
       mapM A.parseJSON ls 
 
 
+createSite :: Mollom (MollomResponse SiteResponse) -- ^ The Mollom monad in which the request is made
+createSite = do
+    let path = "site"
+        errors = generalErrors
+    mollomNoAuthService POST path [] [] errors
+
+
 -- | Request the information Mollom has about a specific site
 readSite :: Mollom (MollomResponse SiteResponse) -- ^ The Mollom monad in which the request is made
 readSite = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "content/" ++ ( mcPublicKey config)
+        path = "site/" ++ ( mcPublicKey config)
         errors = generalErrors
     mollomService pubKey privKey GET path [] [] errors
 
@@ -83,7 +90,7 @@ deleteSite = do
     config <- ask
     let pubKey = mcPublicKey config
         privKey = mcPrivateKey config
-        path = "content/" ++ ( mcPublicKey config) ++ "/delete"
+        path = "site/" ++ ( mcPublicKey config) ++ "/delete"
         errors = [((4,0,4), SiteError SiteUnknown "")]
     mollomService pubKey privKey POST path [] [] errors
 
