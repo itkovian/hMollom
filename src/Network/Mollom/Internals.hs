@@ -11,6 +11,7 @@ module Network.Mollom.Internals
   , MollomError(..)
   , MollomResponse(..)
   , service
+  , serviceNoAuth
   ) where
 
 import           Control.Arrow (second)
@@ -83,7 +84,7 @@ service publicKey privateKey method path params expected errors = do
         oauthH   = oauthHeader (("oauth_signature", oauthSig) : oauthHVs)
         contentH = replaceHeader HdrContentType "application/x-www-form-urlencoded"
         acceptH  = replaceHeader HdrAccept "application/json;q=0.8"
-    liftIO $ putStrLn $ "URI = " ++ (mollomServer ++ "/" ++ path)
+    --liftIO $ putStrLn $ "URI = " ++ (mollomServer ++ "/" ++ path)
     result <- liftIO $ liftM (processResponse errors) $ simpleHTTP (oauthH . contentH . acceptH 
                                                           $ case method of
                                                                POST -> let body = buildEncodedQuery params'
@@ -96,4 +97,25 @@ service publicKey privateKey method path params expected errors = do
     ErrorT { runErrorT = return result }
 
 
-
+-- | This should only be used by the createSite API call. Otherwise, it will return an error.
+serviceNoAuth :: A.FromJSON a
+              => RequestMethod                        -- ^The HTTP method used in this request.
+              -> String                               -- ^The path to the requested resource
+              -> [(String, Maybe String)]             -- ^Request parameters
+              -> [String]                             -- ^Expected returned values
+              -> [((Int, Int, Int), MollomError)]     -- ^Possible error values
+              -> ErrorT MollomError IO (MollomResponse a)-- :: ErrorT (IO (Either MollomError (HTTPResponse String)))
+serviceNoAuth method path params expected errors = do
+    let params' = catSecondMaybes params
+        contentH = replaceHeader HdrContentType "application/x-www-form-urlencoded"
+        acceptH  = replaceHeader HdrAccept "application/json;q=0.8"
+    result <- liftIO $ liftM (processResponse errors) $ simpleHTTP (contentH . acceptH
+                                                          $ case method of
+                                                               POST -> let body = buildEncodedQuery params'
+                                                                       in postRequestWithBody (mollomServer ++ "/" ++ path) 
+                                                                          "application/x-www-form-urlencoded" 
+                                                                          body
+                                                               GET -> getRequest (mollomServer ++ "/" ++ path)
+                                                               _ -> undefined
+                                                          )
+    ErrorT { runErrorT = return result }

@@ -5,6 +5,7 @@ module Network.Mollom.MollomMonad
   ( Mollom
   , MollomState
   , mollomService
+  , mollomNoAuthService
   , runMollom
   ) where
 
@@ -37,6 +38,7 @@ pJSON mr =
       A.Success r' -> return $ mr { response = r' }
       _            -> throwError JSONParseError
 
+
 mollomService :: A.FromJSON a
               => String                           -- ^ Public key
               -> String                           -- ^ Private key
@@ -48,6 +50,9 @@ mollomService :: A.FromJSON a
               -> Mollom (MollomResponse a)
 mollomService pubKey privKey method path params expected errors =
     (wrapMollom $ service pubKey privKey method path params expected errors) >>= pJSON
+
+mollomNoAuthService method path params expected errors = 
+    (wrapMollom $ serviceNoAuth method path params expected errors) >>= pJSON
 
 runMollom :: Mollom a -> MollomConfiguration -> MollomState -> IO (Either MollomError (Maybe ContentID, a))
 runMollom m config s = do
