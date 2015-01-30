@@ -1,0 +1,10 @@
+notifications:
+    email: false
+
+language: haskell
+
+ghc:
+  - 7.4
+  - 7.6
+  - 7.8
+
